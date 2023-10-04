@@ -41,10 +41,9 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 
-import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
-public class SingleFiletReportTest {
+public class MultiFilesReportTest {
     public static final String FILE_11 = "dir1/file1.java";
     public static final String FILE_12 = "dir1/file2.java";
     public static final String FILE_21 = "dir2/file1.java";
@@ -74,27 +73,34 @@ public class SingleFiletReportTest {
                 ) : List.of();
             }
         };
-        reportFile = Files.createTempFile("report", ".html");
+        reportFile = Files.createTempDirectory("report");
     }
     @Test
-    void everyOdd() throws Exception {
+    void test() throws Exception {
         var fileSet = new FileSet(Set.of(FILE_11, FILE_12, FILE_21, FILE_22));
         SourceFilter filter = file -> List.of(
-//                new LineRange(0, 0),
                 new LineRange(2, 2),
                 new LineRange(4, 4),
                 new LineRange(6, 6),
                 new LineRange(8, 8)
         );
-        var report = new SingleHTMLReport.Builder().setSource(source).setFiles(fileSet)
-                .setCoverage(coverage).setTitle("TITLE").setHeader("<h1>HEADER</h1>").setHighlight(filter)
-                .setInclude(filter).report();
+        var report = new MultiHTMLReport.Builder().setSource(source).setFiles(fileSet)
+                .setCoverage(coverage)
+                .setTitle("TITLE").setHeader("<h1>HEADER</h1>").setHighlight(filter)
+                .setInclude(filter)
+                .setFolderHeader(f -> "FOLDER " + f)
+                .setFileHeader(f -> "FILE " + f).report();
         report.report(reportFile);
         System.out.println("Report: " + reportFile.toString());
-        List<String> content = Files.readAllLines(reportFile);
+        Path toc = reportFile.resolve("index.html");
+        List<String> content = Files.readAllLines(toc);
         assertTrue(content.contains("<title>TITLE</title>"));
         assertTrue(content.contains("<h1>HEADER</h1>"));
-        assertTrue(content.stream().anyMatch("<tr><td><a href=\"#total\">total</a></td><td>1/2</td></tr>"::equals));
+        assertTrue(content.stream().anyMatch("<tr><td><a>total</a></td><td>1/2</td></tr>"::equals));
+        content = Files.readAllLines(reportFile.resolve("dir1.html"));
+        assertTrue(content.contains("FOLDER dir1"));
+        content = Files.readAllLines(reportFile.resolve(FILE_11.replace('/', '_') + ".html"));
+        assertTrue(content.contains("FILE dir1/file1.java"));
         assertTrue(content.stream().anyMatch("<a class=\"uncovered\">4: 4</a>"::equals));
         assertTrue(content.stream().anyMatch("<a class=\"covered\">6: 6</a>"::equals));
     }

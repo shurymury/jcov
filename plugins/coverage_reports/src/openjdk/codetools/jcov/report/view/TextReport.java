@@ -100,4 +100,41 @@ public class TextReport extends HightlightFilteredReport {
             }, "");
         }
     }
+
+    public static class Builder {
+        private SourceHierarchy source;
+        private FileSet files;
+        private FileCoverage coverage;
+        private String header;
+        private SourceFilter filter;
+
+        public Builder setSource(SourceHierarchy source) {
+            this.source = source;
+            return this;
+        }
+
+        public Builder setFiles(FileSet files) {
+            this.files = files;
+            return this;
+        }
+
+        public Builder setCoverage(FileCoverage coverage) {
+            this.coverage = coverage;
+            return this;
+        }
+
+        public Builder setHeader(String header) {
+            this.header = header;
+            return this;
+        }
+
+        public Builder setFilter(SourceFilter filter) {
+            this.filter = filter;
+            return this;
+        }
+
+        public TextReport report() {
+            return new TextReport(source, files, coverage, header, filter);
+        }
+    }
 }

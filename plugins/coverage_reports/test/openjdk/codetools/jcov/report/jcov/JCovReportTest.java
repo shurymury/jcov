@@ -32,9 +32,9 @@ import openjdk.codetools.jcov.report.filter.SourceFilter;
 import openjdk.codetools.jcov.report.source.ContextFilter;
 import openjdk.codetools.jcov.report.source.SourcePath;
 import openjdk.codetools.jcov.report.view.SingleHTMLReport;
-import openjdk.codetools.jcov.report.view.TextReport;
 import com.sun.tdk.jcov.data.FileFormatException;
 import com.sun.tdk.jcov.instrument.DataRoot;
+import openjdk.codetools.jcov.report.view.TextReport;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -69,11 +69,9 @@ public class JCovReportTest {
         String diffPkg = "/" + JCovReportTest.class.getPackageName().replace('.', '/') + "/";
         var filter = GitDiffFilter.parseDiff(GitDifFilterTest.cp(diffPkg + "negative_array_size.diff")/*, Set.of("src")*/);
         Path textReport = Files.createTempFile("report", ".txt");
-        new TextReport(new SourcePath(src, src.resolve("src")),
-                files,
-                rawCoverage,
-                "negative array size fix",
-                new ContextFilter(filter, 10)).report(textReport);
+        new TextReport.Builder().setSource(new SourcePath(src, src.resolve("src"))).setFiles(files)
+                .setCoverage(rawCoverage).setHeader("negative array size fix")
+                .setFilter(new ContextFilter(filter, 10)).report().report(textReport);
         List<String> reportLines = Files.readAllLines(textReport);
         assertTrue(reportLines.contains("1454:      * @throws StreamCorruptedException if arrayLength is negative"));
         assertTrue(reportLines.contains("1457:     private void checkArray(Class<?> arrayType, int arrayLength) throws ObjectStreamException {"));
@@ -83,13 +81,9 @@ public class JCovReportTest {
         assertTrue(reportLines.contains("2143:         }"));
         assertTrue(reportLines.contains("2142:+            throw new StreamCorruptedException(\"Array length is negative\");"));
         Path htmlReport = Files.createTempFile("report", ".html");
-        new SingleHTMLReport(new SourcePath(src, src.resolve("src")),
-                files,
-                rawCoverage,
-                "negative array size fix",
-                "negative array size fix",
-                filter,
-                new ContextFilter(filter, 10)).report(htmlReport);
+        new SingleHTMLReport.Builder().setSource(new SourcePath(src, src.resolve("src"))).setFiles(files)
+                .setCoverage(rawCoverage).setTitle("negative array size fix").setHeader("negative array size fix")
+                .setHighlight(filter).setInclude(new ContextFilter(filter, 10)).report().report(htmlReport);
         System.out.println("Report: " + htmlReport);
         reportLines = Files.readAllLines(htmlReport);
         assertTrue(reportLines.contains("<a class=\"highlight\">1454:      * @throws StreamCorruptedException if arrayLength is negative</a>"));
@@ -110,11 +104,7 @@ public class JCovReportTest {
             }
         };
         Path textReport = Files.createTempFile("report", ".txt");
-        new TextReport(new SourcePath(src, src.resolve("src")),
-                files,
-                rawCoverage,
-                "negative array size fix",
-                filter).report(textReport);
+        new TextReport.Builder().setSource(new SourcePath(src, src.resolve("src"))).setFiles(files).setCoverage(rawCoverage).setHeader("negative array size fix").setFilter(filter).report().report(textReport);
         List<String> reportLines = Files.readAllLines(textReport);
         assertTrue(reportLines.contains("3035:+            this.in = new PeekInputStream(in);"));
     }

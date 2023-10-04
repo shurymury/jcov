@@ -73,7 +73,8 @@ public class TextReportTest {
         );
         var files = new FileSet(Set.of(SingleFiletReportTest.FILE_11, SingleFiletReportTest.FILE_12,
                 SingleFiletReportTest.FILE_21, SingleFiletReportTest.FILE_22));
-        var report = new TextReport(source, files, coverage, "HEADER", filter);
+        var report = new TextReport.Builder().setSource(source).setFiles(files).setCoverage(coverage)
+                .setHeader("HEADER").setFilter(filter).report();
         report.report(reportFile);
         var content = Files.readAllLines(reportFile);
         assertTrue(content.contains("HEADER"));

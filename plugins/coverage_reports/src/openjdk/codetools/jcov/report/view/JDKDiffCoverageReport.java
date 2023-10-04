@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
 /**
  * This is a utility class to generate report for openjdk.
  */
-public class JDKReport {
+public class JDKDiffCoverageReport {
     public static void main(String[] args) throws Exception {
         try {
             var coverage = new JCovLineCoverage(DataRoot.read(args[0]));
@@ -52,12 +52,13 @@ public class JDKReport {
             String title = args.length >= 5 ? args[4] : "";
             String header = args.length >= 6 ? args[5] : "";
             if (isHTML)
-                new SingleHTMLReport(source, new FileSet(diff.files()), coverage,
-                        title, header,
-                        diff, new ContextFilter(diff, 10))
+                new SingleHTMLReport.Builder().setSource(source).setFiles(new FileSet(diff.files()))
+                        .setCoverage(coverage).setTitle(title).setHeader(header).setHighlight(diff)
+                        .setInclude(new ContextFilter(diff, 10)).report()
                         .report(Path.of(reportFile));
             else
-                new TextReport(source, new FileSet(diff.files()), coverage, header, diff)
+                new TextReport.Builder().setSource(source).setFiles(new FileSet(diff.files())).setCoverage(coverage)
+                        .setHeader(header).setFilter(diff).report()
                         .report(Path.of(reportFile));
         } catch (Throwable e) {
             System.out.println("Usage: java ... openjdk.codetools.jcov.report.view.JDKReport \\");
@@ -70,7 +71,7 @@ public class JDKReport {
         }
     }
 
-    private static SourcePath jdkSource(List<Path> repos) {
+    static SourcePath jdkSource(List<Path> repos) {
         //TODO add platform specific - one platform or many?
         //TODO - what about closed?
         return new SourcePath(repos.stream().collect(Collectors.toMap(

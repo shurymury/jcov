@@ -161,4 +161,53 @@ public class SingleHTMLReport extends HightlightFilteredReport {
             out.write("<a id=\"" + s.replace('/', '_') + "\"/>");
         }
     }
+
+    public static class Builder {
+        private SourceHierarchy source;
+        private FileSet files;
+        private FileCoverage coverage;
+        private String title;
+        private String header;
+        private SourceFilter highlight;
+        private SourceFilter include;
+
+        public Builder setSource(SourceHierarchy source) {
+            this.source = source;
+            return this;
+        }
+
+        public Builder setFiles(FileSet files) {
+            this.files = files;
+            return this;
+        }
+
+        public Builder setCoverage(FileCoverage coverage) {
+            this.coverage = coverage;
+            return this;
+        }
+
+        public Builder setTitle(String title) {
+            this.title = title;
+            return this;
+        }
+
+        public Builder setHeader(String header) {
+            this.header = header;
+            return this;
+        }
+
+        public Builder setHighlight(SourceFilter highlight) {
+            this.highlight = highlight;
+            return this;
+        }
+
+        public Builder setInclude(SourceFilter include) {
+            this.include = include;
+            return this;
+        }
+
+        public SingleHTMLReport report() {
+            return new SingleHTMLReport(source, files, coverage, title, header, highlight, include);
+        }
+    }
 }
