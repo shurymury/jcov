@@ -27,6 +27,7 @@ package openjdk.codetools.jcov.report.view;
 import openjdk.codetools.jcov.report.Coverage;
 import openjdk.codetools.jcov.report.CoveredLineRange;
 import openjdk.codetools.jcov.report.FileCoverage;
+import openjdk.codetools.jcov.report.FileItems;
 import openjdk.codetools.jcov.report.FileSet;
 import openjdk.codetools.jcov.report.LineRange;
 import openjdk.codetools.jcov.report.filter.SourceFilter;
@@ -38,8 +39,10 @@ import org.testng.annotations.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
@@ -52,42 +55,53 @@ public class SingleFiletReportTest {
     static SourceHierarchy source;
     static FileCoverage coverage;
     static Path reportFile;
+    private static FileItems items;
+
     public static Path createFiles() throws IOException {
         Path root = Files.createTempDirectory("source");
         Files.createDirectories(root);
         for (var dir : List.of("dir1", "dir2")) Files.createDirectories(root.resolve(dir));
         for (var file : List.of(FILE_11, FILE_12, FILE_21, FILE_22))
-            Files.write(root.resolve(file), List.of("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"));
+            Files.write(root.resolve(file),
+                    List.of("1", "2", "3", "4", "5", "6", "7", "8", "9", "0").stream().map(s -> "source line #" + s)
+                            .collect(Collectors.toList()));
         return root;
     }
     @BeforeClass
     static void init() throws IOException {
         Path root = createFiles();
         source = new SourcePath(root, root);
-        coverage = new FileCoverage() {
-            @Override
-            public List<CoveredLineRange> ranges(String file) {
-                return file.equals(FILE_11) ? List.of(
-                        new CoveredLineRange(1, 1, Coverage.COVERED),
-                        new CoveredLineRange(3, 4, Coverage.UNCOVERED),
-                        new CoveredLineRange(6, 8, Coverage.COVERED)
-                ) : List.of();
-            }
+        coverage = file -> file.equals(FILE_11) ? List.of(
+                new CoveredLineRange(1, 1, Coverage.COVERED),
+                new CoveredLineRange(3, 4, Coverage.UNCOVERED),
+                new CoveredLineRange(6, 8, Coverage.COVERED)
+        ) : List.of();
+        items = file -> {
+            var res = new ArrayList<FileItems.FileItem>();
+            res.add(new FileItems.FileItemImpl("item0", List.of(new LineRange(0, 1)), Coverage.UNCOVERED));
+            if (file.equals(SingleFiletReportTest.FILE_11)) return res;
+            res.add(new FileItems.FileItemImpl("item1", List.of(new LineRange(2, 3)), Coverage.COVERED));
+            if (file.equals(SingleFiletReportTest.FILE_12)) return res;
+            res.add(new FileItems.FileItemImpl("item2", List.of(new LineRange(4, 5)), Coverage.UNCOVERED));
+            if (file.equals(SingleFiletReportTest.FILE_21)) return res;
+            res.add(new FileItems.FileItemImpl("item3", List.of(new LineRange(6, 7)), Coverage.COVERED));
+            if (file.equals(SingleFiletReportTest.FILE_22)) return res;
+            return null;
         };
         reportFile = Files.createTempFile("report", ".html");
     }
     @Test
-    void everyOdd() throws Exception {
+    void test() throws Exception {
         var fileSet = new FileSet(Set.of(FILE_11, FILE_12, FILE_21, FILE_22));
         SourceFilter filter = file -> List.of(
-//                new LineRange(0, 0),
                 new LineRange(2, 2),
                 new LineRange(4, 4),
                 new LineRange(6, 6),
                 new LineRange(8, 8)
         );
         var report = new SingleHTMLReport.Builder().setSource(source).setFiles(fileSet)
-                .setCoverage(coverage).setTitle("TITLE").setHeader("<h1>HEADER</h1>").setHighlight(filter)
+                .setCoverage(coverage).setItems(items)
+                .setTitle("TITLE").setHeader("<h1>HEADER</h1>").setHighlight(filter)
                 .setInclude(filter).report();
         report.report(reportFile);
         System.out.println("Report: " + reportFile.toString());
@@ -95,7 +109,8 @@ public class SingleFiletReportTest {
         assertTrue(content.contains("<title>TITLE</title>"));
         assertTrue(content.contains("<h1>HEADER</h1>"));
         assertTrue(content.stream().anyMatch("<tr><td><a href=\"#total\">total</a></td><td>1/2</td></tr>"::equals));
-        assertTrue(content.stream().anyMatch("<a class=\"uncovered\">4: 4</a>"::equals));
-        assertTrue(content.stream().anyMatch("<a class=\"covered\">6: 6</a>"::equals));
+        assertTrue(content.stream().anyMatch("<a class=\"uncovered\">4: source line #4</a>"::equals));
+        assertTrue(content.stream().anyMatch("<a class=\"covered\">6: source line #6</a>"::equals));
+        assertTrue(content.contains("<tr><td>item3</td><td>1/1</td></tr>"));
     }
 }

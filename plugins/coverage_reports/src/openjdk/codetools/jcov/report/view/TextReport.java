@@ -26,12 +26,14 @@ package openjdk.codetools.jcov.report.view;
 
 import openjdk.codetools.jcov.report.Coverage;
 import openjdk.codetools.jcov.report.FileCoverage;
+import openjdk.codetools.jcov.report.FileItems;
 import openjdk.codetools.jcov.report.FileSet;
 import openjdk.codetools.jcov.report.LineRange;
 import openjdk.codetools.jcov.report.filter.SourceFilter;
 import openjdk.codetools.jcov.report.source.SourceHierarchy;
 
 import java.io.BufferedWriter;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -42,8 +44,10 @@ public class TextReport extends HightlightFilteredReport {
     private static final String SEPARATOR_LINE = "-".repeat(80);
     private String header;
 
-    public TextReport(SourceHierarchy source, FileSet files, FileCoverage coverage, String header, SourceFilter filter) {
-        super(source, files, new CoverageHierarchy(files.files(), source, coverage, filter), filter, filter);
+    public TextReport(SourceHierarchy source, FileSet files,
+                      FileCoverage coverage, FileItems items,
+                      String header, SourceFilter filter) {
+        super(source, files, items, new CoverageHierarchy(files.files(), source, coverage, filter), filter, filter);
         this.header = header;
     }
 
@@ -77,7 +81,8 @@ public class TextReport extends HightlightFilteredReport {
                 }
 
                 @Override
-                public void printSourceLine(int line, String s, boolean highlight, Coverage coverage) throws Exception {
+                public void printSourceLine(int line, String s, boolean highlight, Coverage coverage,
+                                            FileItems.FileItem item) throws Exception {
                     out.write((line + 1) + ":" + (coverage == null ? " " : coverage.covered() > 0 ? "+" : "-") + s);
                     out.newLine();
                 }
@@ -97,6 +102,22 @@ public class TextReport extends HightlightFilteredReport {
                 public void startDir(String s, Coverage cov) throws Exception {
 
                 }
+
+                @Override
+                public void startItems() {
+
+                }
+
+                @Override
+                public void printItem(FileItems.FileItem fi) throws Exception {
+                    out.write(fi.item() + ":" + fi.coverage());
+                    out.newLine();
+                }
+
+                @Override
+                public void endItems() {
+
+                }
             }, "");
         }
     }
@@ -105,6 +126,7 @@ public class TextReport extends HightlightFilteredReport {
         private SourceHierarchy source;
         private FileSet files;
         private FileCoverage coverage;
+        private FileItems items;
         private String header;
         private SourceFilter filter;
 
@@ -133,8 +155,13 @@ public class TextReport extends HightlightFilteredReport {
             return this;
         }
 
+        public Builder setItems(FileItems items) {
+            this.items = items;
+            return this;
+        }
+
         public TextReport report() {
-            return new TextReport(source, files, coverage, header, filter);
+            return new TextReport(source, files, coverage, items, header, filter);
         }
     }
 }

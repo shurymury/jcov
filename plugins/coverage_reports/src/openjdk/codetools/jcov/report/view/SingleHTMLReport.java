@@ -26,6 +26,7 @@ package openjdk.codetools.jcov.report.view;
 
 import openjdk.codetools.jcov.report.Coverage;
 import openjdk.codetools.jcov.report.FileCoverage;
+import openjdk.codetools.jcov.report.FileItems;
 import openjdk.codetools.jcov.report.FileSet;
 import openjdk.codetools.jcov.report.LineRange;
 import openjdk.codetools.jcov.report.filter.SourceFilter;
@@ -36,6 +37,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static java.lang.String.format;
+
 /**
  * Implements a hierarchical report in a single html file.
  */
@@ -45,10 +48,9 @@ public class SingleHTMLReport extends HightlightFilteredReport {
     private String header;
 
     public SingleHTMLReport(SourceHierarchy source, FileSet files, FileCoverage coverage,
-                            String title, String header,
+                            FileItems items, String title, String header,
                             SourceFilter highlight, SourceFilter include) {
-        //TODO a builder
-        super(source, files, new CoverageHierarchy(files.files(), source, coverage, highlight),
+        super(source, files, items, new CoverageHierarchy(files.files(), source, coverage, highlight),
                 highlight, include);
         this.title = title;
         this.header = header;
@@ -127,7 +129,8 @@ public class SingleHTMLReport extends HightlightFilteredReport {
         }
 
         @Override
-        public void printSourceLine(int lineNo, String line, boolean highlight, Coverage coverage) throws IOException {
+        public void printSourceLine(int lineNo, String line, boolean highlight, Coverage coverage,
+                                    FileItems.FileItem item) throws IOException {
             out.write("<a");
             if (coverage != null) {
                 if (coverage.covered() > 0)
@@ -160,6 +163,21 @@ public class SingleHTMLReport extends HightlightFilteredReport {
             if (s.isEmpty()) s = "total";
             out.write("<a id=\"" + s.replace('/', '_') + "\"/>");
         }
+
+        @Override
+        public void startItems() throws Exception {
+            out.write("<table>"); out.newLine();
+        }
+
+        @Override
+        public void printItem(FileItems.FileItem fi) throws IOException, Exception {
+            out.write(format("<tr><td>%s</td><td>%s</td></tr>", fi.item(), fi.coverage().toString())); out.newLine();
+        }
+
+        @Override
+        public void endItems() throws Exception {
+            out.write("</table>"); out.newLine();
+        }
     }
 
     public static class Builder {
@@ -170,6 +188,7 @@ public class SingleHTMLReport extends HightlightFilteredReport {
         private String header;
         private SourceFilter highlight;
         private SourceFilter include;
+        private FileItems items;
 
         public Builder setSource(SourceHierarchy source) {
             this.source = source;
@@ -206,8 +225,13 @@ public class SingleHTMLReport extends HightlightFilteredReport {
             return this;
         }
 
+        public Builder setItems(FileItems items) {
+            this.items = items;
+            return this;
+        }
+
         public SingleHTMLReport report() {
-            return new SingleHTMLReport(source, files, coverage, title, header, highlight, include);
+            return new SingleHTMLReport(source, files, coverage, items, title, header, highlight, include);
         }
     }
 }

@@ -52,7 +52,11 @@ public class JDKDiffCoverageReport {
             String title = args.length >= 5 ? args[4] : "";
             String header = args.length >= 6 ? args[5] : "";
             if (isHTML)
-                new SingleHTMLReport.Builder().setSource(source).setFiles(new FileSet(diff.files()))
+//                new SingleHTMLReport.Builder().setSource(source).setFiles(new FileSet(diff.files()))
+//                        .setCoverage(coverage).setTitle(title).setHeader(header).setHighlight(diff)
+//                        .setInclude(new ContextFilter(diff, 10)).report()
+//                        .report(Path.of(reportFile));
+                new MultiHTMLReport.Builder().setSource(source).setFiles(new FileSet(diff.files()))
                         .setCoverage(coverage).setTitle(title).setHeader(header).setHighlight(diff)
                         .setInclude(new ContextFilter(diff, 10)).report()
                         .report(Path.of(reportFile));

@@ -27,6 +27,7 @@ package openjdk.codetools.jcov.report.view;
 import openjdk.codetools.jcov.report.Coverage;
 import openjdk.codetools.jcov.report.CoveredLineRange;
 import openjdk.codetools.jcov.report.FileCoverage;
+import openjdk.codetools.jcov.report.FileItems;
 import openjdk.codetools.jcov.report.FileSet;
 import openjdk.codetools.jcov.report.LineRange;
 import openjdk.codetools.jcov.report.filter.SourceFilter;
@@ -38,6 +39,7 @@ import org.testng.annotations.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -46,20 +48,28 @@ import static org.testng.Assert.assertTrue;
 public class TextReportTest {
     static SourceHierarchy source;
     static FileCoverage coverage;
+    static FileItems items;
     static Path reportFile;
     @BeforeClass
     static void init() throws IOException {
         Path root = SingleFiletReportTest.createFiles();
         source = new SourcePath(root, root);
-        coverage = new FileCoverage() {
-            @Override
-            public List<CoveredLineRange> ranges(String file) {
-                return file.equals(SingleFiletReportTest.FILE_11) ? List.of(
-                        new CoveredLineRange(1, 1, Coverage.COVERED),
-                        new CoveredLineRange(3, 4, Coverage.UNCOVERED),
-                        new CoveredLineRange(6, 8, Coverage.COVERED)
-                ) : List.of();
-            }
+        coverage = file -> file.equals(SingleFiletReportTest.FILE_11) ? List.of(
+                new CoveredLineRange(1, 1, Coverage.COVERED),
+                new CoveredLineRange(3, 4, Coverage.UNCOVERED),
+                new CoveredLineRange(6, 8, Coverage.COVERED)
+        ) : List.of();
+        items = file -> {
+            var res = new ArrayList<FileItems.FileItem>();
+            res.add(new FileItems.FileItemImpl("item0", List.of(new LineRange(0, 1)), Coverage.UNCOVERED));
+            if (file.equals(SingleFiletReportTest.FILE_11)) return res;
+            res.add(new FileItems.FileItemImpl("item1", List.of(new LineRange(2, 3)), Coverage.COVERED));
+            if (file.equals(SingleFiletReportTest.FILE_12)) return res;
+            res.add(new FileItems.FileItemImpl("item2", List.of(new LineRange(4, 5)), Coverage.UNCOVERED));
+            if (file.equals(SingleFiletReportTest.FILE_21)) return res;
+            res.add(new FileItems.FileItemImpl("item3", List.of(new LineRange(6, 7)), Coverage.COVERED));
+            if (file.equals(SingleFiletReportTest.FILE_22)) return res;
+            return null;
         };
         reportFile = Files.createTempFile("report", "txt");
     }
@@ -74,12 +84,14 @@ public class TextReportTest {
         var files = new FileSet(Set.of(SingleFiletReportTest.FILE_11, SingleFiletReportTest.FILE_12,
                 SingleFiletReportTest.FILE_21, SingleFiletReportTest.FILE_22));
         var report = new TextReport.Builder().setSource(source).setFiles(files).setCoverage(coverage)
+                .setItems(items)
                 .setHeader("HEADER").setFilter(filter).report();
         report.report(reportFile);
         var content = Files.readAllLines(reportFile);
         assertTrue(content.contains("HEADER"));
         assertTrue(content.stream().anyMatch("total 1/2"::equals));
-        assertTrue(content.stream().anyMatch("4:-4"::equals));
-        assertTrue(content.stream().anyMatch("6:+6"::equals));
+        assertTrue(content.stream().anyMatch("4:-source line #4"::equals));
+        assertTrue(content.stream().anyMatch("6:+source line #6"::equals));
+        assertTrue(content.contains("item3:1/1"));
     }
 }
