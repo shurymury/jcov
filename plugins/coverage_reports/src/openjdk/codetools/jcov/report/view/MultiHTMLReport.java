@@ -1,3 +1,27 @@
+/*
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package openjdk.codetools.jcov.report.view;
 
 import openjdk.codetools.jcov.report.Coverage;
@@ -12,27 +36,29 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 import static java.lang.String.format;
-import static java.lang.System.currentTimeMillis;
 
 public class MultiHTMLReport extends HightlightFilteredReport {
     private final String title;
-    private final String header;
     private final Function<String, String> folderHeader;
     private final Function<String, String> fileHeader;
+    private final FileItems.ItemsCache cache;
 
     protected MultiHTMLReport(SourceHierarchy source, FileSet files, FileCoverage coverage,
-                              FileItems items, String title, String header,
+                              FileItems items, String title,
                               Function<String, String> folderHeader, Function<String, String> fileHeader,
                               SourceFilter highlight, SourceFilter include) {
         super(source, files, items, new CoverageHierarchy(files.files(), source, coverage, highlight),
                 highlight, include);
         this.title = title;
-        this.header = header;
         this.folderHeader = folderHeader;
         this.fileHeader = fileHeader;
+        cache = new FileItems.ItemsCache(items, files);
     }
 
     public void report(Path dest) throws Exception {
@@ -45,113 +71,171 @@ public class MultiHTMLReport extends HightlightFilteredReport {
         } else {
             Files.createDirectories(dest);
         }
+        toReport("coverage.css", dest);
+        toReport("sorttable.js", dest);
         try (HtmlOut out = new HtmlOut(dest)) {
-            toc(out, "");
             code(out, "");
         }
     }
 
-    private class HtmlOut implements HightlightFilteredReport.TOCOut, HightlightFilteredReport.FileOut,
+    static void toReport(String fileName, Path dest) throws IOException {
+        var className = MultiHTMLReport.class.getName();
+        className = className.substring(0, className.lastIndexOf('.')).replace('.', '/');
+        className = "/" + className;
+        className += "/" + fileName;
+        try (var in = MultiHTMLReport.class.getResourceAsStream(className)) {
+            Files.write(dest.resolve(fileName), in.readAllBytes());
+        }
+    }
+
+    final static Map<FileItems.Quality, String> HTML_COLOR_CLASSES = Map.of(
+            FileItems.Quality.BAD, "item_not_so_good",
+            FileItems.Quality.SO_SO, "item_so_so",
+            FileItems.Quality.GOOD, "item_good",
+            FileItems.Quality.IGNORE, "item_ignore",
+            FileItems.Quality.NONE, "item_none"
+    );
+
+    private class HtmlOut implements /*HightlightFilteredReport.TOCOut, */HightlightFilteredReport.FileOut,
             AutoCloseable {
         private final Path dest;
-        private final BufferedWriter toc;
         private BufferedWriter folderOut = null;
-        private String prevFolder = null;
         private BufferedWriter fileOut = null;
-        private String prevFile = null;
+        private String file;
 
         private HtmlOut(Path dest) throws IOException {
             this.dest = dest;
-            toc = Files.newBufferedWriter(dest.resolve("index.html"));
-            init(title, header, toc, false);
         }
 
-        private void init(String title, String header, BufferedWriter out, boolean css) throws IOException {
+        @Override
+        public void start() throws Exception {
+        }
+
+        private void init(String title, String header, BufferedWriter out/*, boolean folder*/) throws IOException {
             out.write("<html><head>"); out.newLine();
             out.write("<title>" + title + "</title>"); out.newLine();
-            if (css)
-                out.write("<style>\n" +
-                    ".context {\n" +
-                    "  font-weight: lighter;\n" +
-                    "}\n" +
-                    ".highlight {\n" +
-                    "  font-weight: bold;\n" +
-                    "}\n" +
-                    ".covered {\n" +
-                    "  font-weight: bold;\n" +
-                    "  background-color: palegreen;\n" +
-                    "}\n" +
-                    ".uncovered {\n" +
-                    "  font-weight: bold;\n" +
-                    "  background-color: salmon;\n" +
-                    "}\n" +
-                    ".filename {\n" +
-                    "  font-weight: bold;\n" +
-                    "  font-size: larger;\n" +
-                    "}\n" +
-                    "</style>"); out.newLine();
+            out.write("<link rel=\"stylesheet\" type=\"text/css\" href=\"coverage.css\" title=\"Style\">");
+            out.newLine();
+            out.write("<script type=\"text/javascript\" src=\"sorttable.js\"></script>");
+            out.newLine();
             out.write("</head><body>\n"); out.newLine();
             out.write(header + "\n"); out.newLine();
-            out.write("<table><tbody>"); out.newLine();
         }
 
-        private void close(BufferedWriter out) throws IOException {
-            out.write("</tbody></table>"); out.newLine();
-            out.write("<hr>"); out.newLine();
-            out.write("<body></html>");out.newLine();
+        private String reportFile(String folderOrFile) {
+            return folderOrFile.replace('/', '_') + ".html";
         }
-
         @Override
-        public void printFolderLine(String s, Coverage cov) throws IOException {
+        public void startFolder(String s, Coverage cov) throws IOException {
             String folderFile;
-            if (!s.isEmpty()) {
-                folderFile = s.replace('/', '_') + ".html";
-                if (!s.equals(prevFolder)) {
-                    if (folderOut != null) {
-                        close(folderOut);
-                        folderOut.close();
+            if (!s.isEmpty()) folderFile = reportFile(s);
+            else folderFile = "index.html";
+            try(BufferedWriter out = Files.newBufferedWriter(dest.resolve(folderFile))) {
+                init(title, folderHeader.apply(s), out);
+                var colors = cache.count(s);
+                out.write("<table><tr><th>" + items().kind() + "</th><th>Count</th></tr>");
+                out.newLine();
+                for (var c : FileItems.Quality.values()) {
+                    if (items().legend().containsKey(c)) {
+                        out.write("<tr><td><a class=\"" + HTML_COLOR_CLASSES.get(c) + "\">" +
+                                items().legend().get(c) + "</a></td>");
+                        out.write("<td>" + colors.get(c) + "</td></tr>");
+                        out.newLine();
                     }
-                    folderOut = Files.newBufferedWriter(dest.resolve(folderFile));
-                    prevFolder = s;
                 }
-            } else folderFile = null;
-            if (s.isEmpty()) toc.write("<tr><td><a>total</a></td><td>" +
-                    cov + "</td></tr>");
-            else toc.write("<tr><td><a href=\"" + folderFile + "\">" + s + "</a></td><td>" +
-                    cov + "</td></tr>");
-            toc.newLine();
-            if (!s.isEmpty()) init(title, folderHeader.apply(s), folderOut, false);
-        }
-
-        @Override
-        public void printFileLine(String s) throws IOException {
-            System.out.println("in printFileLine " + currentTimeMillis());
-            String fileFile = s.replace('/', '_') + ".html";
-            var cov = coverage().get(s);
-            folderOut.write("<tr><td><a href=\"" + fileFile + "\">" + s + "</a></td><td>" +
-                    cov + "</td></tr>");
-            folderOut.newLine();
-        }
-
-        @Override
-        public void startFile(String file) throws IOException {
-            System.out.println("in startFile " + currentTimeMillis());
-            String fileFile = file.replace('/', '_') + ".html";
-            if (!file.equals(prevFile)) {
-                if (fileOut != null) {
-                    close(fileOut);
-                    fileOut.close();
+                out.write("</table>"); out.newLine();
+                out.write("Line coverage: " + cov.toString());
+                out.newLine();
+                Collection<String> folders = files().folders(s);
+                if (!folders.isEmpty()) {
+                    out.write("<table id=\"folders\" class=\"sortable\"><tr><th>Folder</th>");
+                    out.newLine();
+                    for (var c : FileItems.Quality.values()) {
+                        if (items().legend().containsKey(c)) {
+                            out.write("<th>" + items().legend().get(c) + "</th>");
+                        }
+                    }
+                    out.write("<th>Line coverage</th></tr>");
+                    out.newLine();
+                    for (String subFolder : folders) {
+                        out.write("<tr><td><a href=\"" + reportFile(subFolder) + "\"</a>" + subFolder + "</a></td>");
+                        colors = cache.count(subFolder);
+                        for (var c : FileItems.Quality.values()) {
+                            if (items().legend().containsKey(c)) {
+                                out.write("<td><a class=\"" + HTML_COLOR_CLASSES.get(c) + "\">" +
+                                        colors.get(c) + "</a></td>");
+                            }
+                        }
+                        out.write("<td>" + coverage().get(subFolder) + "</td></tr>");
+                        out.newLine();
+                    }
+                    out.write("</table>");
+                    out.newLine();
                 }
-                fileOut = Files.newBufferedWriter(dest.resolve(fileFile));
-                init(title, fileHeader.apply(file), fileOut, true);
-                prevFile = file;
+                Collection<String> files = files().files(s);
+                if (!files.isEmpty()) {
+                    out.write("<table id=\"files\" class=\"sortable\"><tr><th>File</th>");
+                    for (var c : FileItems.Quality.values()) {
+                        if (items().legend().containsKey(c)) {
+                            out.write("<th>" + items().legend().get(c) + "</th>");
+                        }
+                    }
+                    out.write("<th>Line coverage</th></tr>");
+                    out.newLine();
+                    for (String file : files) {
+                        out.write("<tr><td><a href=\"" + reportFile(file) + "\"</a>" + file + "</a></td>");
+                        colors = cache.count(file);
+                        for (var c : FileItems.Quality.values()) {
+                            if (items().legend().containsKey(c)) {
+                                out.write("<td><a class=\"" + HTML_COLOR_CLASSES.get(c) + "\">" +
+                                        colors.get(c) + "</a></td>");
+                            }
+                        }
+                        out.write("<td>" + coverage().get(file) + "</td></tr>");
+                        out.newLine();
+                    }
+                    out.write("</table>");
+                    out.newLine();
+                }
             }
         }
 
         @Override
-        public void startLineRange(LineRange range) throws IOException {
-//            fileOut.write("<pre>"); fileOut.newLine();
+        public void startFile(String file) throws IOException {
+            this.file = file;
+            fileOut = Files.newBufferedWriter(dest.resolve(reportFile(file)));
+            init(title, fileHeader.apply(file), fileOut);
+        }
+
+        @Override
+        public void startItems() throws Exception {
             fileOut.write("<table>"); fileOut.newLine();
+            fileOut.write("<tr><th>"+items().kind()+"</th>");
+            fileOut.write("</tr>");
+        }
+
+        @Override
+        public void printItem(FileItems.FileItem fi) throws IOException {
+            String href;
+            if (fi.ranges().isEmpty()) href = "";
+            else href = "href=\"#line_" + fi.ranges().get(0).first() + "\"";
+            fileOut.write(format("<tr><td><pre><a id=\"item_%s\" %s class=\"%s\">%s</a></pre></td>",
+                    fi.item(), href,
+                    HTML_COLOR_CLASSES.get(fi.quality()),
+                    fi.item().replace("<", "&lt;").replace(">", "&gt;")));
+            fileOut.write("</tr>");
+            fileOut.newLine();
+        }
+
+        @Override
+        public void endItems() throws Exception {
+            fileOut.write("</table>"); fileOut.newLine();
+            fileOut.write("Line coverage " + coverage().get(file)); fileOut.newLine();
+            fileOut.write("<table>"); fileOut.newLine();
+        }
+
+        @Override
+        public void startLineRange(LineRange range) throws IOException {
         }
 
         private String coveredClass(boolean highlight, Coverage coverage) {
@@ -165,15 +249,19 @@ public class MultiHTMLReport extends HightlightFilteredReport {
             } else
                 return ("context");
         }
+
         @Override
         public void printSourceLine(int lineNo, String line, boolean highlight, Coverage coverage,
-                                    FileItems.FileItem item) throws IOException {
+                                    List<FileItems.FileItem> items) throws IOException {
             fileOut.write("<tr>");
             if (items() != null) {
-                var it = item != null ? item.item() : "";
-                var itc = item != null ? coveredClass(highlight, item.coverage()) : "";
-                fileOut.write("<tr><td><pre><a href=\"#item_"+it+"\" class=\"" + itc + "\">" + it +
-                        "</a></pre></td>");
+                fileOut.write("<td><pre>");
+                for (var item : items) {
+                    //TODO should there be a separate method on what to print?
+                    fileOut.write(format("<a id=\"line_%s\" href=\"#item_%s\" class=\"%s\" title=\"%s\">%s</a>&nbsp;",
+                            (lineNo + 1), item.item(), HTML_COLOR_CLASSES.get(item.quality()), item.item(), " "));
+                }
+                fileOut.write("</pre></td>");
             }
             fileOut.write("<td><pre>" + (lineNo + 1) + "</pre></td>");
             fileOut.write("<td><pre><a class=\""+coveredClass(highlight, coverage)+"\">");
@@ -184,41 +272,25 @@ public class MultiHTMLReport extends HightlightFilteredReport {
 
         @Override
         public void endLineRange(LineRange range) throws IOException {
-            fileOut.write("<hr/>"); fileOut.newLine();
+//            fileOut.write("<hr/>"); fileOut.newLine();
         }
 
         @Override
         public void endFile(String s) throws IOException {
-        }
-
-        @Override
-        public void startDir(String s, Coverage cov) throws IOException {
-        }
-
-        @Override
-        public void startItems() throws Exception {
-            fileOut.write("<table>"); fileOut.newLine();
-        }
-
-        @Override
-        public void printItem(FileItems.FileItem fi) throws IOException {
-            String cssClass = coveredClass(true, fi.coverage());
-            fileOut.write(format("<tr><td><pre><a id=\"item_%s\" class=\"%s\">%s</a></pre></td>" +
-                            "<td><pre><a class=\"%s\">%s</a></pre></td></tr>",
-                    fi.item(), cssClass, fi.item(), cssClass, fi.coverage().toString()));
-            fileOut.newLine();
-        }
-
-        @Override
-        public void endItems() throws Exception {
             fileOut.write("</table>"); fileOut.newLine();
+            fileOut.close();
+        }
+
+        public void endFolder(String s, Coverage cov) {
+        }
+
+        @Override
+        public void end() throws Exception {
+
         }
 
         @Override
         public void close() throws Exception {
-            toc.close();
-            if (folderOut != null) folderOut.close();
-            if (fileOut != null) fileOut.close();
         }
     }
 
@@ -227,10 +299,9 @@ public class MultiHTMLReport extends HightlightFilteredReport {
         private SourceHierarchy source;
         private SourceFilter highlight;
         private SourceFilter include;
-        private String title;
-        private String header;
-        private Function<String, String> folderHeader;
-        private Function<String, String> fileHeader;
+        private String title = "";
+        private Function<String, String> folderHeader = s -> "";
+        private Function<String, String> fileHeader = s -> "";
         private FileCoverage coverage;
         private FileItems items;
 
@@ -259,11 +330,6 @@ public class MultiHTMLReport extends HightlightFilteredReport {
             return this;
         }
 
-        public Builder setHeader(String header) {
-            this.header = header;
-            return this;
-        }
-
         public Builder setCoverage(FileCoverage coverage) {
             this.coverage = coverage;
             return this;
@@ -271,7 +337,7 @@ public class MultiHTMLReport extends HightlightFilteredReport {
 
         public MultiHTMLReport report() {
             return new MultiHTMLReport(source, files, coverage, items,
-                    title, header,
+                    title,
                     folderHeader, fileHeader, highlight, include);
         }
 

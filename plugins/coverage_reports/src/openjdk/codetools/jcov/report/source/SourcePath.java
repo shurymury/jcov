@@ -57,6 +57,21 @@ public class SourcePath implements SourceHierarchy {
         this.roots = roots;
     }
 
+    /**
+     * Maps class-root-relative path to source-root-relative.
+     * @param tailPath
+     * @return
+     */
+    public Path findFile(String tailPath) {
+        if (tailPath.contains("$")) tailPath = tailPath.substring(0, tailPath.indexOf("$")) + ".java";
+        for (var source : roots.keySet())
+            for (var root : roots.get(source)) {
+            var file = root.resolve(tailPath);
+            if (Files.exists(file)) return source.relativize(file);
+        }
+        return null;
+    }
+
     protected Path resolveFile(Path root, String file) {
         return root.resolve(file);
     }

@@ -36,6 +36,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static java.lang.String.format;
 
@@ -44,6 +45,42 @@ import static java.lang.String.format;
  */
 public class SingleHTMLReport extends HightlightFilteredReport {
 
+    static final String CSS = """
+                    .sortable {
+                    }
+                    .context {
+                      font-weight: lighter;
+                    }
+                    .highlight {
+                      font-weight: bold;
+                    }
+                    .covered {
+                      font-weight: bold;
+                      background-color: palegreen;
+                    }
+                    .uncovered {
+                      font-weight: bold;
+                      background-color: salmon;
+                    }
+                    .filename {
+                      font-weight: bold;
+                      font-size: larger;
+                    }
+                    .item_good {
+                      background-color: palegreen;
+                    }
+                    .item_so_so {
+                      background-color: yellow;
+                    }
+                    .item_not_so_good {
+                      background-color: salmon;
+                    }
+                    .item_ignore {
+                      background-color: lightgrey;
+                    }
+                    .item_none {
+                    }
+                    """;
     private String title;
     private String header;
 
@@ -62,24 +99,7 @@ public class SingleHTMLReport extends HightlightFilteredReport {
             out.write("<html><head>"); out.newLine();
             out.write("<title>" + title + "</title>"); out.newLine();
             out.write("<style>\n" +
-                    ".context {\n" +
-                    "  font-weight: lighter;\n" +
-                    "}\n" +
-                    ".highlight {\n" +
-                    "  font-weight: bold;\n" +
-                    "}\n" +
-                    ".covered {\n" +
-                    "  font-weight: bold;\n" +
-                    "  background-color: palegreen;\n" +
-                    "}\n" +
-                    ".uncovered {\n" +
-                    "  font-weight: bold;\n" +
-                    "  background-color: salmon;\n" +
-                    "}\n" +
-                    ".filename {\n" +
-                    "  font-weight: bold;\n" +
-                    "  font-size: larger;\n" +
-                    "}\n" +
+                    CSS +
                     "</style>"); out.newLine();
             out.write("</head><body>\n"); out.newLine();
             out.write(header + "\n"); out.newLine();
@@ -130,7 +150,7 @@ public class SingleHTMLReport extends HightlightFilteredReport {
 
         @Override
         public void printSourceLine(int lineNo, String line, boolean highlight, Coverage coverage,
-                                    FileItems.FileItem item) throws IOException {
+                                    List<FileItems.FileItem> items) throws IOException {
             out.write("<a");
             if (coverage != null) {
                 if (coverage.covered() > 0)
@@ -159,7 +179,22 @@ public class SingleHTMLReport extends HightlightFilteredReport {
         }
 
         @Override
-        public void startDir(String s, Coverage cov) throws IOException {
+        public void endFolder(String s, Coverage cov) {
+
+        }
+
+        @Override
+        public void end() throws Exception {
+
+        }
+
+        @Override
+        public void start() throws Exception {
+
+        }
+
+        @Override
+        public void startFolder(String s, Coverage cov) throws IOException {
             if (s.isEmpty()) s = "total";
             out.write("<a id=\"" + s.replace('/', '_') + "\"/>");
         }
@@ -171,7 +206,11 @@ public class SingleHTMLReport extends HightlightFilteredReport {
 
         @Override
         public void printItem(FileItems.FileItem fi) throws IOException, Exception {
-            out.write(format("<tr><td>%s</td><td>%s</td></tr>", fi.item(), fi.coverage().toString())); out.newLine();
+//            out.write(format("<tr><td>%s</td></tr>", fi.item())); out.newLine();
+            out.write(format("<tr><td><pre><a id=\"item_%s\" class=\"%s\">%s</a></pre></td>",
+                    fi.item(), MultiHTMLReport.HTML_COLOR_CLASSES.get(fi.quality()), fi.item()));
+            out.write("</tr>");
+            out.newLine();
         }
 
         @Override

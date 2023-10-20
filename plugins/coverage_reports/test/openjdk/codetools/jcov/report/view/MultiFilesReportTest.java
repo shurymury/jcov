@@ -41,6 +41,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -80,17 +81,33 @@ public class MultiFilesReportTest {
                 ) : List.of();
             }
         };
-        items = file -> {
-            var res = new ArrayList<FileItems.FileItem>();
-            res.add(new FileItems.FileItemImpl("item0", List.of(new LineRange(1, 2)), Coverage.UNCOVERED));
-            res.add(new FileItems.FileItemImpl("item1", List.of(new LineRange(3, 4)), Coverage.COVERED));
-            if (file.equals(SingleFiletReportTest.FILE_11)) return res;
-            if (file.equals(SingleFiletReportTest.FILE_12)) return res;
-            res.add(new FileItems.FileItemImpl("item2", List.of(new LineRange(5, 6)), Coverage.UNCOVERED));
-            if (file.equals(SingleFiletReportTest.FILE_21)) return res;
-            res.add(new FileItems.FileItemImpl("item3", List.of(new LineRange(7, 8)), Coverage.COVERED));
-            if (file.equals(SingleFiletReportTest.FILE_22)) return res;
-            return null;
+
+        items = new FileItems() {
+            @Override
+            public List<FileItem> items(String file) {
+                var res = new ArrayList<FileItems.FileItem>();
+                res.add(new FileItems.FileItemImpl("item0", List.of(new LineRange(1, 2)), Quality.GOOD));
+                if (file.equals(FILE_22)) return  res;
+                res.add(new FileItems.FileItemImpl("item1", List.of(new LineRange(3, 4)), Quality.BAD));
+                if (file.equals(FILE_21)) return  res;
+                res.add(new FileItems.FileItemImpl("item2", List.of(new LineRange(5, 6)), Quality.SO_SO));
+                if (file.equals(FILE_12)) return  res;
+                res.add(new FileItems.FileItemImpl("item3", List.of(new LineRange(7, 8)), Quality.IGNORE));
+                if (file.equals(FILE_11)) return  res;
+                return null;
+            }
+
+            @Override
+            public String kind() {
+                return "Item";
+            }
+
+            @Override
+            public Map<Quality, String> legend() {
+                return Map.of(Quality.GOOD, "green", Quality.BAD, "red",
+                        Quality.SO_SO, "yellow", Quality.IGNORE, "grey");
+            }
+
         };
         reportFile = Files.createTempDirectory("report");
     }
@@ -105,17 +122,16 @@ public class MultiFilesReportTest {
         );
         var report = new MultiHTMLReport.Builder().setSource(source).setFiles(fileSet)
                 .setCoverage(coverage).setItems(items)
-                .setTitle("TITLE").setHeader("<h1>HEADER</h1>").setHighlight(filter)
+                .setTitle("TITLE").setFolderHeader(s -> s.isEmpty() ? "HEADER" : "FOLDER " + s).setHighlight(filter)
                 .setInclude(filter)
-                .setFolderHeader(f -> "FOLDER " + f)
                 .setFileHeader(f -> "FILE " + f).report();
         report.report(reportFile);
         System.out.println("Report: " + reportFile.toString());
-        Path toc = reportFile.resolve("index.html");
-        List<String> content = Files.readAllLines(toc);
+        Path root = reportFile.resolve("index.html");
+        List<String> content = Files.readAllLines(root);
         assertTrue(content.contains("<title>TITLE</title>"));
-        assertTrue(content.contains("<h1>HEADER</h1>"));
-        assertTrue(content.stream().anyMatch(s -> s.contains("total") && s.contains("2/3")));
+        assertTrue(content.contains("HEADER"));
+        assertTrue(content.stream().anyMatch(s -> s.contains("Line coverage:") && s.contains("2/3")));
         content = Files.readAllLines(reportFile.resolve("dir1.html"));
         assertTrue(content.contains("FOLDER dir1"));
         content = Files.readAllLines(reportFile.resolve(FILE_11.replace('/', '_') + ".html"));

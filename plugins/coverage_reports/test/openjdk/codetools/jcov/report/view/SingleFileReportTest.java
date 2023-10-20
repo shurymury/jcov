@@ -41,13 +41,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
-public class SingleFiletReportTest {
+public class SingleFileReportTest {
     public static final String FILE_11 = "dir1/file1.java";
     public static final String FILE_12 = "dir1/file2.java";
     public static final String FILE_21 = "dir2/file1.java";
@@ -76,17 +77,30 @@ public class SingleFiletReportTest {
                 new CoveredLineRange(3, 4, Coverage.UNCOVERED),
                 new CoveredLineRange(6, 8, Coverage.COVERED)
         ) : List.of();
-        items = file -> {
-            var res = new ArrayList<FileItems.FileItem>();
-            res.add(new FileItems.FileItemImpl("item0", List.of(new LineRange(0, 1)), Coverage.UNCOVERED));
-            if (file.equals(SingleFiletReportTest.FILE_11)) return res;
-            res.add(new FileItems.FileItemImpl("item1", List.of(new LineRange(2, 3)), Coverage.COVERED));
-            if (file.equals(SingleFiletReportTest.FILE_12)) return res;
-            res.add(new FileItems.FileItemImpl("item2", List.of(new LineRange(4, 5)), Coverage.UNCOVERED));
-            if (file.equals(SingleFiletReportTest.FILE_21)) return res;
-            res.add(new FileItems.FileItemImpl("item3", List.of(new LineRange(6, 7)), Coverage.COVERED));
-            if (file.equals(SingleFiletReportTest.FILE_22)) return res;
-            return null;
+        items = new FileItems() {
+            @Override
+            public List<FileItem> items(String file) {
+                var res = new ArrayList<FileItems.FileItem>();
+                res.add(new FileItems.FileItemImpl("item0", List.of(new LineRange(0, 1)), Quality.GOOD));
+                if (file.equals(SingleFileReportTest.FILE_11)) return res;
+                res.add(new FileItems.FileItemImpl("item1", List.of(new LineRange(2, 3)), Quality.BAD));
+                if (file.equals(SingleFileReportTest.FILE_12)) return res;
+                res.add(new FileItems.FileItemImpl("item2", List.of(new LineRange(4, 5)), Quality.SO_SO));
+                if (file.equals(SingleFileReportTest.FILE_21)) return res;
+                res.add(new FileItems.FileItemImpl("item3", List.of(new LineRange(6, 7)), Quality.IGNORE));
+                if (file.equals(SingleFileReportTest.FILE_22)) return res;
+                return null;
+            }
+
+            @Override
+            public String kind() {
+                return "Item";
+            }
+
+            @Override
+            public Map<Quality, String> legend() {
+                return null;
+            }
         };
         reportFile = Files.createTempFile("report", ".html");
     }
@@ -111,6 +125,6 @@ public class SingleFiletReportTest {
         assertTrue(content.stream().anyMatch("<tr><td><a href=\"#total\">total</a></td><td>1/2</td></tr>"::equals));
         assertTrue(content.stream().anyMatch("<a class=\"uncovered\">4: source line #4</a>"::equals));
         assertTrue(content.stream().anyMatch("<a class=\"covered\">6: source line #6</a>"::equals));
-        assertTrue(content.contains("<tr><td>item3</td><td>1/1</td></tr>"));
+        assertTrue(content.contains("<tr><td><pre><a id=\"item_item3\" class=\"item_ignore\">item3</a></pre></td></tr>"));
     }
 }

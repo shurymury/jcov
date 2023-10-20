@@ -71,18 +71,26 @@ public class CoverageHierarchy {
         CoveredLineRange lastCoverageRange = null;
         var fileCoverage = new HashMap<Integer, CoveredLineRange>();
         var used = new HashSet<CoveredLineRange>();
-        for (var range : filter.ranges(file)) {
-            for (int line = range.first(); line <= range.last() ; line++) {
-                if (lastCoverageRange == null || lastCoverageRange.last() < line) {
-                    while (coverageIt.hasNext() && (lastCoverageRange == null || lastCoverageRange.last() < line))
-                        lastCoverageRange = coverageIt.next();
-                }
-                if (lastCoverageRange != null && lastCoverageRange.last() >= line && lastCoverageRange.first() <= line) {
-                    fileCoverage.put(line, lastCoverageRange);
-                    used.add(lastCoverageRange);
+        if (filter != null)
+            for (var range : filter.ranges(file)) {
+                for (int line = range.first(); line <= range.last(); line++) {
+                    if (lastCoverageRange == null || lastCoverageRange.last() < line) {
+                        while (coverageIt.hasNext() && (lastCoverageRange == null || lastCoverageRange.last() < line))
+                            lastCoverageRange = coverageIt.next();
+                    }
+                    if (lastCoverageRange != null && lastCoverageRange.last() >= line && lastCoverageRange.first() <= line) {
+                        fileCoverage.put(line, lastCoverageRange);
+                        used.add(lastCoverageRange);
+                    }
                 }
             }
-        }
+        else
+            while (coverageIt.hasNext()) {
+                var nextCov = coverageIt.next();
+                for (int line = nextCov.first(); line <= nextCov.last(); line++)
+                    fileCoverage.put(line, nextCov);
+                used.add(nextCov);
+            }
         data.put(file, Coverage.sum(used.stream().map(CoveredLineRange::coverage).collect(Collectors.toList())));
         lineCoverage.put(file, fileCoverage);
         return fileCoverage;

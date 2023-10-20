@@ -31,9 +31,20 @@ import openjdk.codetools.jcov.report.LineRange;
 import openjdk.codetools.jcov.report.filter.SourceFilter;
 import openjdk.codetools.jcov.report.source.SourceHierarchy;
 
-import java.io.IOException;
+import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * This support class allows to create reports which only <b>include</b> code which is selected by a filter.
+ * Additionally, this class allows to <b>highlight</b> some portion of the included source code, leaving the
+ * non-highlighted code in the report for context.
+ * The implementation uses visitor pattern twice: once for creating a table of content and then
+ * for the body of the report.
+ * @see #toc(TOCOut, String)
+ * @see #code(FileOut, String)
+ * @see TOCOut
+ * @see FileOut
+ */
 class HightlightFilteredReport {
     private final FileSet files;
     private final FileItems items;
@@ -42,6 +53,15 @@ class HightlightFilteredReport {
     private final SourceFilter highlight;
     private final SourceFilter include;
 
+    /**
+     *
+     * @param source
+     * @param files
+     * @param items
+     * @param coverage
+     * @param highlight
+     * @param include
+     */
     protected HightlightFilteredReport(SourceHierarchy source, FileSet files, FileItems items,
                                        CoverageHierarchy coverage,
                                        SourceFilter highlight, SourceFilter include) {
@@ -55,6 +75,10 @@ class HightlightFilteredReport {
 
     protected FileItems items() {
         return items;
+    }
+
+    public FileSet files() {
+        return files;
     }
 
     protected void toc(TOCOut out, String s) throws Exception {
@@ -71,9 +95,10 @@ class HightlightFilteredReport {
     }
 
     protected void code(FileOut out, String s) throws Exception {
+        out.start();
         Coverage cov = coverage.get(s);
         if (cov != null) {
-            out.startDir(s, cov);
+            out.startFolder(s, cov);
             for (var f : files.folders(s).stream().sorted().collect(Collectors.toList())) {
                 code(out, f);
             }
@@ -82,14 +107,22 @@ class HightlightFilteredReport {
                 if (fileCov != null) {
                     out.startFile(file);
                     if (items != null) {
-                        out.startItems();
-                        for (var fi : items.items(file)) out.printItem(fi);
-                        out.endItems();
+                        List<FileItems.FileItem> itemss = this.items.items(file).stream()
+                                .sorted((o,a) -> o.item().compareTo(a.item())).collect(Collectors.toList());
+                        if (itemss != null && !itemss.isEmpty()) {
+                            out.startItems();
+                            for (var fi : itemss) out.printItem(fi);
+                            out.endItems();
+                        }
                     }
                     var source = this.source.readFile(file);
-                    var highlightRanges = highlight.ranges(file).iterator();
-                    var highlightRange = highlightRanges.next();
-                    for (var range : include.ranges(file)) {
+                    var highlightRanges = highlight != null ?
+                            highlight.ranges(file).iterator() :
+                            List.<LineRange>of().iterator();
+                    var highlightRange = highlightRanges.hasNext() ? highlightRanges.next() : null;
+                    List<LineRange> ranges = include != null ?
+                            include.ranges(file) : List.of(new LineRange(1, source.size() + 1));
+                    for (var range : ranges) {
                         out.startLineRange(range);
                         for (int line = range.first() - 1; line < range.last() && line < source.size(); line++) {
                             while (highlightRange != null && highlightRange.compare(line) > 0)
@@ -104,12 +137,19 @@ class HightlightFilteredReport {
                     out.endFile(s);
                 }
             }
+            out.endFolder(s, cov);
         }
+        out.end();
     }
 
-    private FileItems.FileItem findItem(String file, int line) {
-        return items == null ? null : items.items(file).stream().filter(i ->
-                i.ranges().stream().anyMatch(r -> r.compare(line) == 0)).findAny().orElse(null);
+    private List<FileItems.FileItem> findItem(String file, int line) {
+        if (items == null) return null;
+        var fileItems = items.items(file);
+        if (fileItems == null) return null;
+        return fileItems.stream().filter(i -> {
+            List<LineRange> ranges = i.ranges();
+            return ranges != null && ranges.stream().anyMatch(r -> r.compare(line) == 0);
+        }).collect(Collectors.toList());
     }
 
     protected CoverageHierarchy coverage() {
@@ -121,16 +161,20 @@ class HightlightFilteredReport {
         void printFolderLine(String s, Coverage cov) throws Exception;
     }
     protected interface FileOut {
+        void start() throws Exception;
+        void startFolder(String s, Coverage cov) throws Exception;
         void startFile(String s) throws Exception;
-        void startLineRange(LineRange range) throws Exception;
-        void printSourceLine(int line, String s, boolean highlight, Coverage coverage, FileItems.FileItem item)
-                throws Exception;
-        void endLineRange(LineRange range) throws Exception;
-        void endFile(String s) throws Exception;
-        void startDir(String s, Coverage cov) throws Exception;
         void startItems() throws Exception;
         void printItem(FileItems.FileItem fi) throws Exception;
         void endItems() throws Exception;
+        void startLineRange(LineRange range) throws Exception;
+        void printSourceLine(int line, String s, boolean highlight, Coverage coverage,
+                             List<FileItems.FileItem> items)
+                throws Exception;
+        void endLineRange(LineRange range) throws Exception;
+        void endFile(String s) throws Exception;
+        void endFolder(String s, Coverage cov);
+        void end() throws Exception;
     }
 
     public static class Builder {

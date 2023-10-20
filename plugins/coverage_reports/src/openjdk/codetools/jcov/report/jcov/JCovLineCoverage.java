@@ -65,16 +65,16 @@ public class JCovLineCoverage implements FileCoverage {
         Collections.sort(result);
         return result;
     }
-    private List<CoveredLineRange> ranges(DataClass cls) {
+
+    private static List<CoveredLineRange> ranges(DataClass cls) {
         var result = new HashMap<Integer, Boolean>();
         for (DataMethod m : cls.getMethods()) if (m instanceof DataMethodWithBlocks) {
+            //TODO there is a copy-paste in other classes
             var lc = new MethodCoverage(m, true).getLineCoverage();
-//            boolean methodCovered = false;
             for (int i = (int)lc.firstLine(); i <= lc.lastLine(); i++) {
                 if (lc.isCode(i)) {
                     if (result.get(i) == null || !result.get(i).booleanValue())
                         result.put(i, lc.isLineCovered(i));
-//                    methodCovered |= lc.isLineCovered(i);
                 }
             }
             //mmm but also the method declaration
@@ -142,6 +142,7 @@ public class JCovLineCoverage implements FileCoverage {
                 .map(le -> new CoveredLineRange(le.getKey(), le.getKey(), le.getValue() ? Coverage.COVERED : Coverage.UNCOVERED))
                 .collect(Collectors.toList());
     }
+
 //    private static int getLine(List<DataMethod.LineEntry> lineTable, int bci) {
 //        int maxLine = 0;
 //        for (var le : lineTable) {
