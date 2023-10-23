@@ -43,7 +43,7 @@ import java.util.function.Function;
 
 import static java.lang.String.format;
 
-public class MultiHTMLReport extends HightlightFilteredReport {
+public class MultiHTMLReport extends HighlightFilteredReport {
     private final String title;
     private final Function<String, String> folderHeader;
     private final Function<String, String> fileHeader;
@@ -96,7 +96,7 @@ public class MultiHTMLReport extends HightlightFilteredReport {
             FileItems.Quality.NONE, "item_none"
     );
 
-    private class HtmlOut implements /*HightlightFilteredReport.TOCOut, */HightlightFilteredReport.FileOut,
+    private class HtmlOut implements /*HightlightFilteredReport.TOCOut, */HighlightFilteredReport.FileOut,
             AutoCloseable {
         private final Path dest;
         private BufferedWriter folderOut = null;

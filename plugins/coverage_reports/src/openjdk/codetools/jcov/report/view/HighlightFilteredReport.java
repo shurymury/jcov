@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
  * @see TOCOut
  * @see FileOut
  */
-class HightlightFilteredReport {
+class HighlightFilteredReport {
     private final FileSet files;
     private final FileItems items;
     private final CoverageHierarchy coverage;
@@ -62,9 +62,9 @@ class HightlightFilteredReport {
      * @param highlight
      * @param include
      */
-    protected HightlightFilteredReport(SourceHierarchy source, FileSet files, FileItems items,
-                                       CoverageHierarchy coverage,
-                                       SourceFilter highlight, SourceFilter include) {
+    protected HighlightFilteredReport(SourceHierarchy source, FileSet files, FileItems items,
+                                      CoverageHierarchy coverage,
+                                      SourceFilter highlight, SourceFilter include) {
         this.files = files;
         this.items = items;
         this.coverage = coverage;
@@ -215,8 +215,8 @@ class HightlightFilteredReport {
             return this;
         }
 
-        public HightlightFilteredReport report() {
-            return new HightlightFilteredReport(source, files, items, coverage, highlight, include);
+        public HighlightFilteredReport report() {
+            return new HighlightFilteredReport(source, files, items, coverage, highlight, include);
         }
     }
 }

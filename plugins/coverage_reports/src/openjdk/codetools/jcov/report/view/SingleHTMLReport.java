@@ -43,7 +43,7 @@ import static java.lang.String.format;
 /**
  * Implements a hierarchical report in a single html file.
  */
-public class SingleHTMLReport extends HightlightFilteredReport {
+public class SingleHTMLReport extends HighlightFilteredReport {
 
     static final String CSS = """
                     .sortable {

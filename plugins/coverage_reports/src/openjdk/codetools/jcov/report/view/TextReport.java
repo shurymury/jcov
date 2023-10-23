@@ -33,7 +33,6 @@ import openjdk.codetools.jcov.report.filter.SourceFilter;
 import openjdk.codetools.jcov.report.source.SourceHierarchy;
 
 import java.io.BufferedWriter;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -41,7 +40,7 @@ import java.util.List;
 /**
  * Implements a hierarchical report in a single text file.
  */
-public class TextReport extends HightlightFilteredReport {
+public class TextReport extends HighlightFilteredReport {
     private static final String SEPARATOR_LINE = "-".repeat(80);
     private String header;
 
