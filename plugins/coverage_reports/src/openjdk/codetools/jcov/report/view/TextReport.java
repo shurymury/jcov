@@ -40,25 +40,34 @@ import java.util.List;
 /**
  * Implements a hierarchical report in a single text file.
  */
-public class TextReport extends HighlightFilteredReport {
+public class TextReport {
     private static final String SEPARATOR_LINE = "-".repeat(80);
     private String header;
+    private final  HighlightFilteredReport theReport;
 
     public TextReport(SourceHierarchy source, FileSet files,
                       FileCoverage coverage,
                       String header, SourceFilter filter) {
-        super(source, files, null,
-                new CoverageHierarchy(files.files(), source, coverage, filter), filter, filter);
+        theReport = new HighlightFilteredReport.Builder()
+                .setSource(source)
+                .setFiles(files)
+                .setItems(null)
+                .setCoverage(new CoverageHierarchy(files.files(), source, coverage, filter))
+                .setHighlight(filter)
+                .setInclude(filter)
+                .report();
+//        super(source, files, null,
+//                new CoverageHierarchy(files.files(), source, coverage, filter), filter, filter);
         this.header = header;
     }
 
     public void report(Path dest) throws Exception {
         try (BufferedWriter out = Files.newBufferedWriter(dest)) {
             out.write(header); out.newLine(); out.newLine();
-            super.toc(new TOCOut() {
+            theReport.toc(new HighlightFilteredReport.TOCOut() {
                 @Override
                 public void printFileLine(String file) throws Exception {
-                    out.write(file + " " + coverage().get(file));
+                    out.write(file + " " + theReport.coverage().get(file));
                     out.newLine();
                 }
 
@@ -68,10 +77,10 @@ public class TextReport extends HighlightFilteredReport {
                     out.newLine();
                 }
             }, "");
-            code(new FileOut() {
+            theReport.code(new HighlightFilteredReport.FileOut() {
                 @Override
                 public void startFile(String file) throws Exception {
-                    out.write("file:" + file + " " + coverage().get(file));
+                    out.write("file:" + file + " " + theReport.coverage().get(file));
                     out.newLine();
                     out.write(SEPARATOR_LINE);
                     out.newLine();

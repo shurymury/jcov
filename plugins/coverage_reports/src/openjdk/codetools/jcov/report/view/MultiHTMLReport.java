@@ -43,18 +43,27 @@ import java.util.function.Function;
 
 import static java.lang.String.format;
 
-public class MultiHTMLReport extends HighlightFilteredReport {
+public class MultiHTMLReport {
     private final String title;
     private final Function<String, String> folderHeader;
     private final Function<String, String> fileHeader;
     private final FileItems.ItemsCache cache;
+    private final HighlightFilteredReport theReport;
 
     protected MultiHTMLReport(SourceHierarchy source, FileSet files, FileCoverage coverage,
                               FileItems items, String title,
                               Function<String, String> folderHeader, Function<String, String> fileHeader,
                               SourceFilter highlight, SourceFilter include) {
-        super(source, files, items, new CoverageHierarchy(files.files(), source, coverage, highlight),
-                highlight, include);
+        theReport = new HighlightFilteredReport.Builder()
+                .setSource(source)
+                .setFiles(files)
+                .setItems(items)
+                .setCoverage(new CoverageHierarchy(files.files(), source, coverage, highlight))
+                .setHighlight(highlight)
+                .setInclude(include)
+                .report();
+//        super(source, files, items, new CoverageHierarchy(files.files(), source, coverage, highlight),
+//                highlight, include);
         this.title = title;
         this.folderHeader = folderHeader;
         this.fileHeader = fileHeader;
@@ -74,7 +83,7 @@ public class MultiHTMLReport extends HighlightFilteredReport {
         toReport("coverage.css", dest);
         toReport("sorttable.js", dest);
         try (HtmlOut out = new HtmlOut(dest)) {
-            code(out, "");
+            theReport.code(out, "");
         }
     }
 
@@ -133,12 +142,12 @@ public class MultiHTMLReport extends HighlightFilteredReport {
             try(BufferedWriter out = Files.newBufferedWriter(dest.resolve(folderFile))) {
                 init(title, folderHeader.apply(s), out);
                 var colors = cache.count(s);
-                out.write("<table><tr><th>" + items().kind() + "</th><th>Count</th></tr>");
+                out.write("<table><tr><th>" + theReport.items().kind() + "</th><th>Count</th></tr>");
                 out.newLine();
                 for (var c : FileItems.Quality.values()) {
-                    if (items().legend().containsKey(c)) {
+                    if (theReport.items().legend().containsKey(c)) {
                         out.write("<tr><td><a class=\"" + HTML_COLOR_CLASSES.get(c) + "\">" +
-                                items().legend().get(c) + "</a></td>");
+                                theReport.items().legend().get(c) + "</a></td>");
                         out.write("<td>" + colors.get(c) + "</td></tr>");
                         out.newLine();
                     }
@@ -146,13 +155,13 @@ public class MultiHTMLReport extends HighlightFilteredReport {
                 out.write("</table>"); out.newLine();
                 out.write("Line coverage: " + cov.toString());
                 out.newLine();
-                Collection<String> folders = files().folders(s);
+                Collection<String> folders = theReport.files().folders(s);
                 if (!folders.isEmpty()) {
                     out.write("<table id=\"folders\" class=\"sortable\"><tr><th>Folder</th>");
                     out.newLine();
                     for (var c : FileItems.Quality.values()) {
-                        if (items().legend().containsKey(c)) {
-                            out.write("<th>" + items().legend().get(c) + "</th>");
+                        if (theReport.items().legend().containsKey(c)) {
+                            out.write("<th>" + theReport.items().legend().get(c) + "</th>");
                         }
                     }
                     out.write("<th>Line coverage</th></tr>");
@@ -161,23 +170,23 @@ public class MultiHTMLReport extends HighlightFilteredReport {
                         out.write("<tr><td><a href=\"" + reportFile(subFolder) + "\"</a>" + subFolder + "</a></td>");
                         colors = cache.count(subFolder);
                         for (var c : FileItems.Quality.values()) {
-                            if (items().legend().containsKey(c)) {
+                            if (theReport.items().legend().containsKey(c)) {
                                 out.write("<td><a class=\"" + HTML_COLOR_CLASSES.get(c) + "\">" +
                                         colors.get(c) + "</a></td>");
                             }
                         }
-                        out.write("<td>" + coverage().get(subFolder) + "</td></tr>");
+                        out.write("<td>" + theReport.coverage().get(subFolder) + "</td></tr>");
                         out.newLine();
                     }
                     out.write("</table>");
                     out.newLine();
                 }
-                Collection<String> files = files().files(s);
+                Collection<String> files = theReport.files().files(s);
                 if (!files.isEmpty()) {
                     out.write("<table id=\"files\" class=\"sortable\"><tr><th>File</th>");
                     for (var c : FileItems.Quality.values()) {
-                        if (items().legend().containsKey(c)) {
-                            out.write("<th>" + items().legend().get(c) + "</th>");
+                        if (theReport.items().legend().containsKey(c)) {
+                            out.write("<th>" + theReport.items().legend().get(c) + "</th>");
                         }
                     }
                     out.write("<th>Line coverage</th></tr>");
@@ -186,12 +195,12 @@ public class MultiHTMLReport extends HighlightFilteredReport {
                         out.write("<tr><td><a href=\"" + reportFile(file) + "\"</a>" + file + "</a></td>");
                         colors = cache.count(file);
                         for (var c : FileItems.Quality.values()) {
-                            if (items().legend().containsKey(c)) {
+                            if (theReport.items().legend().containsKey(c)) {
                                 out.write("<td><a class=\"" + HTML_COLOR_CLASSES.get(c) + "\">" +
                                         colors.get(c) + "</a></td>");
                             }
                         }
-                        out.write("<td>" + coverage().get(file) + "</td></tr>");
+                        out.write("<td>" + theReport.coverage().get(file) + "</td></tr>");
                         out.newLine();
                     }
                     out.write("</table>");
@@ -210,7 +219,7 @@ public class MultiHTMLReport extends HighlightFilteredReport {
         @Override
         public void startItems() throws Exception {
             fileOut.write("<table>"); fileOut.newLine();
-            fileOut.write("<tr><th>"+items().kind()+"</th>");
+            fileOut.write("<tr><th>"+theReport.items().kind()+"</th>");
             fileOut.write("</tr>");
         }
 
@@ -230,7 +239,7 @@ public class MultiHTMLReport extends HighlightFilteredReport {
         @Override
         public void endItems() throws Exception {
             fileOut.write("</table>"); fileOut.newLine();
-            fileOut.write("Line coverage " + coverage().get(file)); fileOut.newLine();
+            fileOut.write("Line coverage " + theReport.coverage().get(file)); fileOut.newLine();
             fileOut.write("<table>"); fileOut.newLine();
         }
 
@@ -254,7 +263,7 @@ public class MultiHTMLReport extends HighlightFilteredReport {
         public void printSourceLine(int lineNo, String line, boolean highlight, Coverage coverage,
                                     List<FileItems.FileItem> items) throws IOException {
             fileOut.write("<tr>");
-            if (items() != null) {
+            if (theReport.items() != null) {
                 fileOut.write("<td><pre>");
                 for (var item : items) {
                     //TODO should there be a separate method on what to print?

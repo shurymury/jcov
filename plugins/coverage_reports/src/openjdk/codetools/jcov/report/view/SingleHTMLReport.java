@@ -43,7 +43,7 @@ import static java.lang.String.format;
 /**
  * Implements a hierarchical report in a single html file.
  */
-public class SingleHTMLReport extends HighlightFilteredReport {
+public class SingleHTMLReport {
 
     static final String CSS = """
                     .sortable {
@@ -81,14 +81,24 @@ public class SingleHTMLReport extends HighlightFilteredReport {
                     .item_none {
                     }
                     """;
-    private String title;
-    private String header;
+    private final String title;
+    private final String header;
+    private final  HighlightFilteredReport theReport;
 
     public SingleHTMLReport(SourceHierarchy source, FileSet files, FileCoverage coverage,
                             FileItems items, String title, String header,
                             SourceFilter highlight, SourceFilter include) {
-        super(source, files, items, new CoverageHierarchy(files.files(), source, coverage, highlight),
-                highlight, include);
+        theReport = new HighlightFilteredReport.Builder()
+                .setSource(source)
+                .setFiles(files)
+                .setItems(items)
+                .setCoverage(new CoverageHierarchy(files.files(), source, coverage, highlight))
+                .setHighlight(highlight)
+                .setInclude(include)
+                .report();
+//        theReport = new HighlightFilteredReport(source, files, items,
+//                new CoverageHierarchy(files.files(), source, coverage, highlight),
+//                highlight, include);
         this.title = title;
         this.header = header;
     }
@@ -104,15 +114,15 @@ public class SingleHTMLReport extends HighlightFilteredReport {
             out.write("</head><body>\n"); out.newLine();
             out.write(header + "\n"); out.newLine();
             out.write("<table><tbody>"); out.newLine();
-            toc(rout, "");
+            theReport.toc(rout, "");
             out.write("</tbody></table>"); out.newLine();
             out.write("<hr>"); out.newLine();
-            code(rout, "");
+            theReport.code(rout, "");
             out.write("<body></html>");out.newLine();
         }
     }
 
-    private class HtmlOut implements TOCOut, FileOut {
+    private class HtmlOut implements HighlightFilteredReport.TOCOut, HighlightFilteredReport.FileOut {
         private final BufferedWriter out;
 
         private HtmlOut(BufferedWriter out) {
@@ -121,7 +131,7 @@ public class SingleHTMLReport extends HighlightFilteredReport {
 
         @Override
         public void printFileLine(String s) throws IOException {
-            var cov = coverage().get(s);
+            var cov = theReport.coverage().get(s);
             out.write("<tr><td><a href=\"#" + s.replace('/', '_') + "\">" + s + "</a></td><td>" +
                     cov + "</td></tr>");
             out.newLine();
@@ -140,7 +150,7 @@ public class SingleHTMLReport extends HighlightFilteredReport {
             out.write("<hr/>"); out.newLine();
             out.write("<a class=\"filename\" id=\"" +
                     file.replace('/', '_') + "\">" + file + ":" +
-                    coverage().get(file) + "</a></br>"); out.newLine();
+                    theReport.coverage().get(file) + "</a></br>"); out.newLine();
         }
 
         @Override
