@@ -48,18 +48,17 @@ public class MultiHTMLReport {
     private final Function<String, String> folderHeader;
     private final Function<String, String> fileHeader;
     private final FileItems.ItemsCache cache;
-    private final HighlightFilteredReport theReport;
+    private final FilteredReport theReport;
 
     protected MultiHTMLReport(SourceHierarchy source, FileSet files, FileCoverage coverage,
                               FileItems items, String title,
                               Function<String, String> folderHeader, Function<String, String> fileHeader,
-                              SourceFilter highlight, SourceFilter include) {
-        theReport = new HighlightFilteredReport.Builder()
+                              SourceFilter include) {
+        theReport = new FilteredReport.Builder()
                 .setSource(source)
                 .setFiles(files)
                 .setItems(items)
-                .setCoverage(new CoverageHierarchy(files.files(), source, coverage, highlight))
-                .setHighlight(highlight)
+                .setCoverage(new CoverageHierarchy(files.files(), source, coverage, include))
                 .setInclude(include)
                 .report();
 //        super(source, files, items, new CoverageHierarchy(files.files(), source, coverage, highlight),
@@ -105,8 +104,7 @@ public class MultiHTMLReport {
             FileItems.Quality.NONE, "item_none"
     );
 
-    private class HtmlOut implements /*HightlightFilteredReport.TOCOut, */HighlightFilteredReport.FileOut,
-            AutoCloseable {
+    private class HtmlOut implements FilteredReport.FileOut, AutoCloseable {
         private final Path dest;
         private BufferedWriter folderOut = null;
         private BufferedWriter fileOut = null;
@@ -247,20 +245,18 @@ public class MultiHTMLReport {
         public void startLineRange(LineRange range) throws IOException {
         }
 
-        private String coveredClass(boolean highlight, Coverage coverage) {
+        private String coveredClass(Coverage coverage) {
             if (coverage != null) {
                 if (coverage.covered() > 0)
                     return ("covered");
                 else
                     return ("uncovered");
-            } else if (highlight) {
-                return ("highlight");
             } else
                 return ("context");
         }
 
         @Override
-        public void printSourceLine(int lineNo, String line, boolean highlight, Coverage coverage,
+        public void printSourceLine(int lineNo, String line, Coverage coverage,
                                     List<FileItems.FileItem> items) throws IOException {
             fileOut.write("<tr>");
             if (theReport.items() != null) {
@@ -273,7 +269,7 @@ public class MultiHTMLReport {
                 fileOut.write("</pre></td>");
             }
             fileOut.write("<td><pre>" + (lineNo + 1) + "</pre></td>");
-            fileOut.write("<td><pre><a class=\""+coveredClass(highlight, coverage)+"\">");
+            fileOut.write("<td><pre><a class=\""+coveredClass(coverage)+"\">");
             fileOut.write(line.replaceAll("</?\\s*pre\\s*>", ""));
             fileOut.write("</a></pre></td></tr>");
             fileOut.newLine();
@@ -306,7 +302,6 @@ public class MultiHTMLReport {
     public static class Builder {
         private FileSet files;
         private SourceHierarchy source;
-        private SourceFilter highlight;
         private SourceFilter include;
         private String title = "";
         private Function<String, String> folderHeader = s -> "";
@@ -321,11 +316,6 @@ public class MultiHTMLReport {
 
         public Builder setSource(SourceHierarchy source) {
             this.source = source;
-            return this;
-        }
-
-        public Builder setHighlight(SourceFilter highlight) {
-            this.highlight = highlight;
             return this;
         }
 
@@ -347,7 +337,7 @@ public class MultiHTMLReport {
         public MultiHTMLReport report() {
             return new MultiHTMLReport(source, files, coverage, items,
                     title,
-                    folderHeader, fileHeader, highlight, include);
+                    folderHeader, fileHeader, include);
         }
 
         public Builder setFolderHeader(Function<String, String> prefix) {

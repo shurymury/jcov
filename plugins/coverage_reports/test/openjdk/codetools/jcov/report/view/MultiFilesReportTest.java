@@ -122,7 +122,7 @@ public class MultiFilesReportTest {
         );
         var report = new MultiHTMLReport.Builder().setSource(source).setFiles(fileSet)
                 .setCoverage(coverage).setItems(items)
-                .setTitle("TITLE").setFolderHeader(s -> s.isEmpty() ? "HEADER" : "FOLDER " + s).setHighlight(filter)
+                .setTitle("TITLE").setFolderHeader(s -> s.isEmpty() ? "HEADER" : "FOLDER " + s)
                 .setInclude(filter)
                 .setFileHeader(f -> "FILE " + f).report();
         report.report(reportFile);

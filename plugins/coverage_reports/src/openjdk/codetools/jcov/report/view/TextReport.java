@@ -43,7 +43,7 @@ import java.util.List;
 public class TextReport {
     private static final String SEPARATOR_LINE = "-".repeat(80);
     private String header;
-    private final  HighlightFilteredReport theReport;
+    private final  FilteredReport theReport;
 
     public TextReport(SourceHierarchy source, FileSet files,
                       FileCoverage coverage,
@@ -53,7 +53,6 @@ public class TextReport {
                 .setFiles(files)
                 .setItems(null)
                 .setCoverage(new CoverageHierarchy(files.files(), source, coverage, filter))
-                .setHighlight(filter)
                 .setInclude(filter)
                 .report();
 //        super(source, files, null,
@@ -77,7 +76,7 @@ public class TextReport {
                     out.newLine();
                 }
             }, "");
-            theReport.code(new HighlightFilteredReport.FileOut() {
+            theReport.code(new FilteredReport.FileOut() {
                 @Override
                 public void startFile(String file) throws Exception {
                     out.write("file:" + file + " " + theReport.coverage().get(file));
@@ -91,7 +90,7 @@ public class TextReport {
                 }
 
                 @Override
-                public void printSourceLine(int line, String s, boolean highlight, Coverage coverage,
+                public void printSourceLine(int line, String s, Coverage coverage,
                                             List<FileItems.FileItem> items) throws Exception {
                     out.write((line + 1) + ":" + (coverage == null ? " " : coverage.covered() > 0 ? "+" : "-") + s);
                     out.newLine();

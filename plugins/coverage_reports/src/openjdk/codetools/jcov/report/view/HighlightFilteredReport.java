@@ -31,7 +31,9 @@ import openjdk.codetools.jcov.report.LineRange;
 import openjdk.codetools.jcov.report.filter.SourceFilter;
 import openjdk.codetools.jcov.report.source.SourceHierarchy;
 
+import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -45,13 +47,8 @@ import java.util.stream.Collectors;
  * @see TOCOut
  * @see FileOut
  */
-class HighlightFilteredReport {
-    private final FileSet files;
-    private final FileItems items;
-    private final CoverageHierarchy coverage;
-    private final SourceHierarchy source;
+class HighlightFilteredReport extends FilteredReport {
     private final SourceFilter highlight;
-    private final SourceFilter include;
 
     /**
      *
@@ -65,33 +62,12 @@ class HighlightFilteredReport {
     protected HighlightFilteredReport(SourceHierarchy source, FileSet files, FileItems items,
                                       CoverageHierarchy coverage,
                                       SourceFilter highlight, SourceFilter include) {
-        this.files = files;
-        this.items = items;
-        this.coverage = coverage;
-        this.source = source;
+        super(source, files, items, coverage, include);
         this.highlight = highlight;
-        this.include = include;
     }
 
-    protected FileItems items() {
-        return items;
-    }
-
-    public FileSet files() {
-        return files;
-    }
-
-    protected void toc(TOCOut out, String s) throws Exception {
-        Coverage cov = coverage.get(s);
-        if (cov != null) {
-            out.printFolderLine(s.isEmpty() ? "" : s, cov);
-            for (var f : files.folders(s).stream().sorted().collect(Collectors.toList())) {
-                toc(out, f);
-            }
-            for (var f : files.files(s).stream().sorted().collect(Collectors.toList())) {
-                out.printFileLine(f);
-            }
-        }
+    public SourceFilter highlight() {
+        return highlight;
     }
 
     protected void code(FileOut out, String s) throws Exception {
@@ -108,7 +84,7 @@ class HighlightFilteredReport {
                     out.startFile(file);
                     if (items != null) {
                         List<FileItems.FileItem> itemss = this.items.items(file).stream()
-                                .sorted((o,a) -> o.item().compareTo(a.item())).collect(Collectors.toList());
+                                .sorted((o, a) -> o.item().compareTo(a.item())).collect(Collectors.toList());
                         if (itemss != null && !itemss.isEmpty()) {
                             out.startItems();
                             for (var fi : itemss) out.printItem(fi);
@@ -142,81 +118,59 @@ class HighlightFilteredReport {
         out.end();
     }
 
-    private List<FileItems.FileItem> findItem(String file, int line) {
-        if (items == null) return null;
-        var fileItems = items.items(file);
-        if (fileItems == null) return null;
-        return fileItems.stream().filter(i -> {
-            List<LineRange> ranges = i.ranges();
-            return ranges != null && ranges.stream().anyMatch(r -> r.compare(line) == 0);
-        }).collect(Collectors.toList());
-    }
+    public static class Highlighter {
+        private final SourceFilter highlight;
+        private Iterator<LineRange> lastFileRanges;
+        private LineRange lastRange = null;
 
-    protected CoverageHierarchy coverage() {
-        return coverage;
-    }
-
-    protected interface TOCOut {
-        void printFileLine(String f) throws Exception;
-        void printFolderLine(String s, Coverage cov) throws Exception;
-    }
-    protected interface FileOut {
-        void start() throws Exception;
-        void startFolder(String s, Coverage cov) throws Exception;
-        void startFile(String s) throws Exception;
-        void startItems() throws Exception;
-        void printItem(FileItems.FileItem fi) throws Exception;
-        void endItems() throws Exception;
-        void startLineRange(LineRange range) throws Exception;
-        void printSourceLine(int line, String s, boolean highlight, Coverage coverage,
-                             List<FileItems.FileItem> items)
-                throws Exception;
-        void endLineRange(LineRange range) throws Exception;
-        void endFile(String s) throws Exception;
-        void endFolder(String s, Coverage cov);
-        void end() throws Exception;
-    }
-
-    public static class Builder {
-        private SourceHierarchy source;
-        private FileSet files;
-        private FileItems items;
-        private CoverageHierarchy coverage;
-        private SourceFilter highlight;
-        private SourceFilter include;
-
-        public Builder setItems(FileItems items) {
-            this.items = items;
-            return this;
-        }
-
-        public Builder setSource(SourceHierarchy source) {
-            this.source = source;
-            return this;
-        }
-
-        public Builder setFiles(FileSet files) {
-            this.files = files;
-            return this;
-        }
-
-        public Builder setCoverage(CoverageHierarchy coverage) {
-            this.coverage = coverage;
-            return this;
-        }
-
-        public Builder setHighlight(SourceFilter highlight) {
+        public Highlighter(SourceFilter highlight) {
             this.highlight = highlight;
-            return this;
         }
 
-        public Builder setInclude(SourceFilter include) {
-            this.include = include;
-            return this;
+        public void visitFile(String file) {
+            lastFileRanges = highlight.ranges(file).iterator();
         }
 
-        public HighlightFilteredReport report() {
-            return new HighlightFilteredReport(source, files, items, coverage, highlight, include);
+        public boolean isHighlighted(int line) {
+            if (lastRange == null)
+                if (lastFileRanges.hasNext()) lastRange = lastFileRanges.next();
+                else return false;
+            while (lastRange.compare(line) > 0 && lastFileRanges.hasNext()) lastRange = lastFileRanges.next();
+            return lastRange.compare(line) == 0;
         }
+    }
+
+    public abstract static class FileOut implements FilteredReport.FileOut {
+        private final SourceFilter highlight;
+        private Iterator<LineRange> lastFileRanges;
+        String lastFile;
+        private LineRange lastRange = null;
+
+        protected FileOut(SourceFilter highlight) {
+            this.highlight = highlight;
+        }
+
+        @Override
+        public final void printSourceLine(int line, String s, Coverage coverage,
+                                          List<FileItems.FileItem> items) throws Exception {
+            boolean isHighlight;
+            if (highlight != null) {
+                if (!Objects.equals(lastFile, s)) {
+                    lastFile = s;
+                    List<LineRange> ranges = highlight.ranges(s);
+                    lastFileRanges = ranges != null ? ranges.iterator() : List.<LineRange>of().iterator();
+                }
+                if (lastRange == null || lastRange.compare(line) < 0) {
+                    while (lastFileRanges.hasNext()) {
+                        lastRange = lastFileRanges.next();
+                        if (lastRange.compare(line) >= 0) break;
+                    }
+                }
+                isHighlight = lastRange != null && lastRange.compare(line) == 0;
+            } else isHighlight = false;
+            printSourceLine(line, s, isHighlight, coverage, items);
+        }
+        public abstract void printSourceLine(int line, String s, boolean highlight, Coverage coverage,
+                                          List<FileItems.FileItem> items) throws Exception;
     }
 }

@@ -83,17 +83,17 @@ public class SingleHTMLReport {
                     """;
     private final String title;
     private final String header;
-    private final  HighlightFilteredReport theReport;
+    private final FilteredReport theReport;
+    private final SourceFilter highlight;
 
     public SingleHTMLReport(SourceHierarchy source, FileSet files, FileCoverage coverage,
                             FileItems items, String title, String header,
                             SourceFilter highlight, SourceFilter include) {
-        theReport = new HighlightFilteredReport.Builder()
+        theReport = new FilteredReport.Builder()
                 .setSource(source)
                 .setFiles(files)
                 .setItems(items)
                 .setCoverage(new CoverageHierarchy(files.files(), source, coverage, highlight))
-                .setHighlight(highlight)
                 .setInclude(include)
                 .report();
 //        theReport = new HighlightFilteredReport(source, files, items,
@@ -101,6 +101,7 @@ public class SingleHTMLReport {
 //                highlight, include);
         this.title = title;
         this.header = header;
+        this.highlight = highlight;
     }
 
     public void report(Path dest) throws Exception {
@@ -122,10 +123,12 @@ public class SingleHTMLReport {
         }
     }
 
-    private class HtmlOut implements HighlightFilteredReport.TOCOut, HighlightFilteredReport.FileOut {
+    private class HtmlOut implements HighlightFilteredReport.TOCOut, FilteredReport.FileOut {
         private final BufferedWriter out;
+        private final HighlightFilteredReport.Highlighter highlighter;
 
         private HtmlOut(BufferedWriter out) {
+            this.highlighter = new HighlightFilteredReport.Highlighter(highlight);
             this.out = out;
         }
 
@@ -151,6 +154,7 @@ public class SingleHTMLReport {
             out.write("<a class=\"filename\" id=\"" +
                     file.replace('/', '_') + "\">" + file + ":" +
                     theReport.coverage().get(file) + "</a></br>"); out.newLine();
+            highlighter.visitFile(file);
         }
 
         @Override
@@ -159,7 +163,7 @@ public class SingleHTMLReport {
         }
 
         @Override
-        public void printSourceLine(int lineNo, String line, boolean highlight, Coverage coverage,
+        public void printSourceLine(int lineNo, String line, Coverage coverage,
                                     List<FileItems.FileItem> items) throws IOException {
             out.write("<a");
             if (coverage != null) {
@@ -167,7 +171,7 @@ public class SingleHTMLReport {
                     out.write(" class=\"covered\"");
                 else
                     out.write(" class=\"uncovered\"");
-            } else if (highlight) {
+            } else if (highlighter.isHighlighted(lineNo + 1)) {
                 out.write(" class=\"highlight\"");
             } else
                 out.write(" class=\"context\"");
