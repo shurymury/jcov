@@ -55,28 +55,66 @@ public class TextReport {
                 .setCoverage(new CoverageHierarchy(files.files(), source, coverage, filter))
                 .setInclude(filter)
                 .report();
-//        super(source, files, null,
-//                new CoverageHierarchy(files.files(), source, coverage, filter), filter, filter);
         this.header = header;
     }
 
     public void report(Path dest) throws Exception {
         try (BufferedWriter out = Files.newBufferedWriter(dest)) {
             out.write(header); out.newLine(); out.newLine();
-            theReport.toc(new FilteredReport.TOCOut() {
+            theReport.report(new FilteredReport.FileOut() {
                 @Override
-                public void printFileLine(String file) throws Exception {
+                public void startFile(String file) throws Exception {
                     out.write(file + " " + theReport.coverage().get(file));
                     out.newLine();
                 }
 
                 @Override
-                public void printFolderLine(String folder, Coverage cov) throws Exception {
-                    out.write((folder.isEmpty() ? "total" : folder) + " " + cov);
+                public void startItems() throws Exception {
+
+                }
+
+                @Override
+                public void printItem(FileItems.FileItem fi) throws Exception {
+
+                }
+
+                @Override
+                public void endItems() throws Exception {
+
+                }
+
+                @Override
+                public void startLineRange(LineRange range) throws Exception {
+
+                }
+
+                @Override
+                public void printSourceLine(int line, String s, Coverage coverage, List<FileItems.FileItem> items) throws Exception {
+
+                }
+
+                @Override
+                public void endLineRange(LineRange range) throws Exception {
+
+                }
+
+                @Override
+                public void endFile(String s) throws Exception {
+
+                }
+
+                @Override
+                public void endFolder(String s) {
+
+                }
+
+                @Override
+                public void startFolder(String folder) throws Exception {
+                    out.write((folder.isEmpty() ? "total" : folder) + " " + theReport.coverage().get(folder));
                     out.newLine();
                 }
-            }, "");
-            theReport.code(new FilteredReport.FileOut() {
+            });
+            theReport.report(new FilteredReport.FileOut() {
                 @Override
                 public void startFile(String file) throws Exception {
                     out.write("file:" + file + " " + theReport.coverage().get(file));
@@ -111,16 +149,6 @@ public class TextReport {
                 public void endFolder(String s) {
 
                 }
-
-//                @Override
-//                public void end() throws Exception {
-//
-//                }
-
-//                @Override
-//                public void start() throws Exception {
-//
-//                }
 
                 @Override
                 public void startFolder(String s) throws Exception {

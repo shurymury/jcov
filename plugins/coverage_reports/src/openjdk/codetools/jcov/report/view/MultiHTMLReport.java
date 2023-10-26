@@ -78,7 +78,7 @@ public class MultiHTMLReport {
         toReport("coverage.css", dest);
         toReport("sorttable.js", dest);
         try (HtmlOut out = new HtmlOut(dest)) {
-            theReport.code(out);
+            theReport.report(out);
         }
     }
 

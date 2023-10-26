@@ -106,7 +106,7 @@ public class SingleHTMLReport {
 
     public void report(Path dest) throws Exception {
         try (BufferedWriter out = Files.newBufferedWriter(dest)) {
-            var rout = new HtmlOut(out);
+//            var rout = new HtmlOut(out);
             out.write("<html><head>"); out.newLine();
             out.write("<title>" + title + "</title>"); out.newLine();
             out.write("<style>\n" +
@@ -115,26 +115,27 @@ public class SingleHTMLReport {
             out.write("</head><body>\n"); out.newLine();
             out.write(header + "\n"); out.newLine();
             out.write("<table><tbody>"); out.newLine();
-            theReport.toc(rout, "");
+//            theReport.toc(rout, "");
+            theReport.report(new HtmlTOCOut(out));
             out.write("</tbody></table>"); out.newLine();
             out.write("<hr>"); out.newLine();
-            theReport.code(rout);
+            theReport.report(new HtmlOut(out));
             out.write("<body></html>");out.newLine();
         }
     }
 
-    private class HtmlOut implements FilteredReport.TOCOut, FilteredReport.FileOut {
+    private class HtmlTOCOut implements FilteredReport.FileOut {
         private final BufferedWriter out;
         private final FilteredReport.FilterHighlighter highlighter;
         private String lastFile;
 
-        private HtmlOut(BufferedWriter out) {
+        private HtmlTOCOut(BufferedWriter out) {
             this.highlighter = new FilteredReport.FilterHighlighter(highlight);
             this.out = out;
         }
 
         @Override
-        public void printFileLine(String s) throws IOException {
+        public void startFile(String s) throws IOException {
             var cov = theReport.coverage().get(s);
             out.write("<tr><td><a href=\"#" + s.replace('/', '_') + "\">" + s + "</a></td><td>" +
                     cov + "</td></tr>");
@@ -142,11 +143,46 @@ public class SingleHTMLReport {
         }
 
         @Override
-        public void printFolderLine(String s, Coverage cov) throws IOException {
+        public void startItems() throws Exception {}
+
+        @Override
+        public void printItem(FileItems.FileItem fi) throws Exception {}
+
+        @Override
+        public void endItems() throws Exception {}
+
+        @Override
+        public void startLineRange(LineRange range) throws Exception {}
+
+        @Override
+        public void printSourceLine(int line, String s, Coverage coverage, List<FileItems.FileItem> items) throws Exception {}
+
+        @Override
+        public void endLineRange(LineRange range) throws Exception {}
+
+        @Override
+        public void endFile(String s) throws Exception {}
+
+        @Override
+        public void endFolder(String s) {}
+
+        @Override
+        public void startFolder(String s) throws IOException {
+            Coverage cov = theReport.coverage().get(s);
             if (s.isEmpty()) s = "total";
             out.write("<tr><td><a href=\"#" + s.replace('/', '_') + "\">" + s + "</a></td><td>" +
                     cov + "</td></tr>");
             out.newLine();
+        }
+    }
+    private class HtmlOut implements FilteredReport.FileOut {
+        private final BufferedWriter out;
+        private final FilteredReport.FilterHighlighter highlighter;
+        private String lastFile;
+
+        private HtmlOut(BufferedWriter out) {
+            this.highlighter = new FilteredReport.FilterHighlighter(highlight);
+            this.out = out;
         }
 
         @Override
@@ -197,16 +233,6 @@ public class SingleHTMLReport {
         public void endFolder(String s) {
 
         }
-
-//        @Override
-//        public void end() throws Exception {
-//
-//        }
-//
-//        @Override
-//        public void start() throws Exception {
-//
-//        }
 
         @Override
         public void startFolder(String s) throws IOException {

@@ -33,7 +33,6 @@ import openjdk.codetools.jcov.report.source.SourceHierarchy;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toMap;
@@ -43,9 +42,9 @@ import static java.util.stream.Collectors.toMap;
  * The implementation uses visitor pattern twice: once for creating a table of content and then
  * for the body of the report.
  * @see #toc(TOCOut, String)
- * @see #code(FilteredReport.FileOut, String)
+ * @see #report(FilteredReport.FileOut, String)
  * @see TOCOut
- * @see HighlightFilteredReport.FileOut
+ * @see FileOut
  */
 public class FilteredReport {
     protected final FileSet files;
@@ -77,31 +76,18 @@ public class FilteredReport {
         return files;
     }
 
-    protected void toc(TOCOut out, String s) throws Exception {
-        Coverage cov = coverage.get(s);
-        if (cov != null) {
-            out.printFolderLine(s.isEmpty() ? "" : s, cov);
-            for (var f : files.folders(s).stream().sorted().collect(Collectors.toList())) {
-                toc(out, f);
-            }
-            for (var f : files.files(s).stream().sorted().collect(Collectors.toList())) {
-                out.printFileLine(f);
-            }
-        }
+    public void report(FileOut out) throws Exception {
+        report(out, "");
     }
 
-    public void code(FileOut out) throws Exception {
-        code(out, "");
-    }
-
-    protected void code(FileOut out, String s) throws Exception {
+    protected void report(FileOut out, String s) throws Exception {
         Coverage cov = coverage.get(s);
         if (cov != null) {
             List<String> subFolders = files.folders(s).stream().sorted().collect(Collectors.toList());
             List<String> files = this.files.files(s).stream().sorted().collect(Collectors.toList());
             out.startFolder(s);
             for (var f : subFolders) {
-                code(out, f);
+                report(out, f);
             }
             for (var file : files) {
                 var fileCov = coverage.getLineRanges(file);
@@ -150,14 +136,7 @@ public class FilteredReport {
         return coverage;
     }
 
-    protected interface TOCOut {
-        void printFileLine(String f) throws Exception;
-
-        void printFolderLine(String s, Coverage cov) throws Exception;
-    }
-
     protected interface FileOut {
-//        void start() throws Exception;
 
         void startFolder(String s) throws Exception;
 
@@ -181,70 +160,7 @@ public class FilteredReport {
 
         void endFolder(String s);
 
-//        void end() throws Exception;
     }
-
-    /**
-     *
-     */
-//    protected HighlightFilteredReport(SourceHierarchy source, FileSet files, FileItems items,
-//                                      CoverageHierarchy coverage,
-//                                      SourceFilter highlight, SourceFilter include) {
-//        super(source, files, items, coverage, include);
-//        this.highlight = highlight;
-//    }
-//
-//    public SourceFilter highlight() {
-//        return highlight;
-//    }
-
-//    protected void code(FileOut out, String s) throws Exception {
-//        out.start();
-//        Coverage cov = coverage.get(s);
-//        if (cov != null) {
-//            out.startFolder(s, cov, subFolders, null);
-//            for (var f : files.folders(s).stream().sorted().collect(Collectors.toList())) {
-//                code(out, f);
-//            }
-//            for (var file : files.files(s).stream().sorted().collect(Collectors.toList())) {
-//                var fileCov = coverage.getLineRanges(file);
-//                if (fileCov != null) {
-//                    out.startFile(file);
-//                    if (items != null) {
-//                        List<FileItems.FileItem> itemss = this.items.items(file).stream()
-//                                .sorted((o, a) -> o.item().compareTo(a.item())).collect(Collectors.toList());
-//                        if (itemss != null && !itemss.isEmpty()) {
-//                            out.startItems();
-//                            for (var fi : itemss) out.printItem(fi);
-//                            out.endItems();
-//                        }
-//                    }
-//                    var source = this.source.readFile(file);
-//                    var highlightRanges = highlight != null ?
-//                            highlight.ranges(file).iterator() :
-//                            List.<LineRange>of().iterator();
-//                    var highlightRange = highlightRanges.hasNext() ? highlightRanges.next() : null;
-//                    List<LineRange> ranges = include != null ?
-//                            include.ranges(file) : List.of(new LineRange(1, source.size() + 1));
-//                    for (var range : ranges) {
-//                        out.startLineRange(range);
-//                        for (int line = range.first() - 1; line < range.last() && line < source.size(); line++) {
-//                            while (highlightRange != null && highlightRange.compare(line) > 0)
-//                                highlightRange = highlightRanges.hasNext() ? highlightRanges.next() : null;
-//                            boolean highlight = highlightRange != null && highlightRange.compare(line + 1) == 0;
-//                            out.printSourceLine(line, source.get(line), highlight,
-//                                    fileCov.containsKey(line + 1) ? fileCov.get(line + 1).coverage() : null,
-//                                    findItem(file, line + 1));
-//                        }
-//                        out.endLineRange(range);
-//                    }
-//                    out.endFile(s);
-//                }
-//            }
-//            out.endFolder(s, cov, null);
-//        }
-//        out.end();
-//    }
 
     /**
      * This class allows to <b>highlight</b> some portion of the included source code, leaving the
