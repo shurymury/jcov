@@ -42,13 +42,13 @@ import java.util.List;
  */
 public class TextReport {
     private static final String SEPARATOR_LINE = "-".repeat(80);
-    private String header;
-    private final  FilteredReport theReport;
+    private final String header;
+    private final FilteredReport theReport;
 
     public TextReport(SourceHierarchy source, FileSet files,
                       FileCoverage coverage,
                       String header, SourceFilter filter) {
-        theReport = new HighlightFilteredReport.Builder()
+        theReport = new FilteredReport.Builder()
                 .setSource(source)
                 .setFiles(files)
                 .setItems(null)
@@ -63,7 +63,7 @@ public class TextReport {
     public void report(Path dest) throws Exception {
         try (BufferedWriter out = Files.newBufferedWriter(dest)) {
             out.write(header); out.newLine(); out.newLine();
-            theReport.toc(new HighlightFilteredReport.TOCOut() {
+            theReport.toc(new FilteredReport.TOCOut() {
                 @Override
                 public void printFileLine(String file) throws Exception {
                     out.write(file + " " + theReport.coverage().get(file));
@@ -108,22 +108,22 @@ public class TextReport {
                 }
 
                 @Override
-                public void endFolder(String s, Coverage cov) {
+                public void endFolder(String s) {
 
                 }
 
+//                @Override
+//                public void end() throws Exception {
+//
+//                }
+
+//                @Override
+//                public void start() throws Exception {
+//
+//                }
+
                 @Override
-                public void end() throws Exception {
-
-                }
-
-                @Override
-                public void start() throws Exception {
-
-                }
-
-                @Override
-                public void startFolder(String s, Coverage cov) throws Exception {
+                public void startFolder(String s) throws Exception {
 
                 }
 
@@ -141,7 +141,7 @@ public class TextReport {
                 public void endItems() {
                     throw new RuntimeException("This shoudl not happen");
                 }
-            }, "");
+            });
         }
     }
 

@@ -122,7 +122,7 @@ public class SingleFileReportTest {
         List<String> content = Files.readAllLines(reportFile);
         assertTrue(content.contains("<title>TITLE</title>"));
         assertTrue(content.contains("<h1>HEADER</h1>"));
-        assertTrue(content.stream().anyMatch("<tr><td><a href=\"#total\">total</a></td><td>1/2</td></tr>"::equals));
+        assertTrue(content.stream().anyMatch("<tr><td><a href=\"#total\">total</a></td><td>50.00%(1/2)</td></tr>"::equals));
         assertTrue(content.stream().anyMatch("<a class=\"uncovered\">4: source line #4</a>"::equals));
         assertTrue(content.stream().anyMatch("<a class=\"covered\">6: source line #6</a>"::equals));
         assertTrue(content.contains("<tr><td><pre><a id=\"item_item3\" class=\"item_ignore\">item3</a></pre></td></tr>"));

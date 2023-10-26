@@ -118,17 +118,18 @@ public class SingleHTMLReport {
             theReport.toc(rout, "");
             out.write("</tbody></table>"); out.newLine();
             out.write("<hr>"); out.newLine();
-            theReport.code(rout, "");
+            theReport.code(rout);
             out.write("<body></html>");out.newLine();
         }
     }
 
-    private class HtmlOut implements HighlightFilteredReport.TOCOut, FilteredReport.FileOut {
+    private class HtmlOut implements FilteredReport.TOCOut, FilteredReport.FileOut {
         private final BufferedWriter out;
-        private final HighlightFilteredReport.Highlighter highlighter;
+        private final FilteredReport.FilterHighlighter highlighter;
+        private String lastFile;
 
         private HtmlOut(BufferedWriter out) {
-            this.highlighter = new HighlightFilteredReport.Highlighter(highlight);
+            this.highlighter = new FilteredReport.FilterHighlighter(highlight);
             this.out = out;
         }
 
@@ -154,7 +155,7 @@ public class SingleHTMLReport {
             out.write("<a class=\"filename\" id=\"" +
                     file.replace('/', '_') + "\">" + file + ":" +
                     theReport.coverage().get(file) + "</a></br>"); out.newLine();
-            highlighter.visitFile(file);
+            lastFile = file;
         }
 
         @Override
@@ -171,7 +172,7 @@ public class SingleHTMLReport {
                     out.write(" class=\"covered\"");
                 else
                     out.write(" class=\"uncovered\"");
-            } else if (highlighter.isHighlighted(lineNo + 1)) {
+            } else if (highlighter.isHighlighted(lastFile, lineNo + 1)) {
                 out.write(" class=\"highlight\"");
             } else
                 out.write(" class=\"context\"");
@@ -193,22 +194,22 @@ public class SingleHTMLReport {
         }
 
         @Override
-        public void endFolder(String s, Coverage cov) {
+        public void endFolder(String s) {
 
         }
 
+//        @Override
+//        public void end() throws Exception {
+//
+//        }
+//
+//        @Override
+//        public void start() throws Exception {
+//
+//        }
+
         @Override
-        public void end() throws Exception {
-
-        }
-
-        @Override
-        public void start() throws Exception {
-
-        }
-
-        @Override
-        public void startFolder(String s, Coverage cov) throws IOException {
+        public void startFolder(String s) throws IOException {
             if (s.isEmpty()) s = "total";
             out.write("<a id=\"" + s.replace('/', '_') + "\"/>");
         }

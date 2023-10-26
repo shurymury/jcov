@@ -27,6 +27,8 @@ package openjdk.codetools.jcov.report;
 import java.util.Collection;
 import java.util.Objects;
 
+import static java.lang.String.format;
+
 /**
  * There is a fixed number of items of some sort. Some of those items can be covered.
  * @see CoveredLineRange
@@ -74,6 +76,6 @@ public class Coverage {
 
     @Override
     public String toString() {
-        return covered + "/" + total;
+        return format("%2.2f%%(%d/%d)", Math.ceil((double) covered/(double)total * 100), covered,  total);
     }
 }

@@ -111,6 +111,7 @@ public interface FileItems {
 
         //TODO will this work if the first call is with a file?
         public Map<Quality, Integer> count(String folder) {
+            if (items == null) return Map.of();
             if (cache.containsKey(folder)) return cache.get(folder);
             var res = new HashMap<Quality, Integer>();
             items.legend().entrySet().stream().forEach(e -> res.put(e.getKey(), 0));

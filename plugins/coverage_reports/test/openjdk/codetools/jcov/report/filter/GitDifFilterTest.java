@@ -112,7 +112,7 @@ public class GitDifFilterTest {
             return res;
         }).setHeader("ObjectInputStream coverage").setFilter(filter).report().report(report);
         List<String> reportLines = Files.readAllLines(report);
-        assertTrue(reportLines.contains("src/ObjectInputStream.java 1/2"));
+        assertTrue(reportLines.contains("src/ObjectInputStream.java 50.00%(1/2)"));
         assertTrue(reportLines.contains("2142:-            throw new StreamCorruptedException(\"Array length is negative\");"));
     }
 }

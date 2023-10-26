@@ -47,7 +47,6 @@ public class MultiHTMLReport {
     private final String title;
     private final Function<String, String> folderHeader;
     private final Function<String, String> fileHeader;
-    private final FileItems.ItemsCache cache;
     private final FilteredReport theReport;
 
     protected MultiHTMLReport(SourceHierarchy source, FileSet files, FileCoverage coverage,
@@ -61,12 +60,9 @@ public class MultiHTMLReport {
                 .setCoverage(new CoverageHierarchy(files.files(), source, coverage, include))
                 .setInclude(include)
                 .report();
-//        super(source, files, items, new CoverageHierarchy(files.files(), source, coverage, highlight),
-//                highlight, include);
         this.title = title;
         this.folderHeader = folderHeader;
         this.fileHeader = fileHeader;
-        cache = new FileItems.ItemsCache(items, files);
     }
 
     public void report(Path dest) throws Exception {
@@ -82,7 +78,7 @@ public class MultiHTMLReport {
         toReport("coverage.css", dest);
         toReport("sorttable.js", dest);
         try (HtmlOut out = new HtmlOut(dest)) {
-            theReport.code(out, "");
+            theReport.code(out);
         }
     }
 
@@ -114,10 +110,6 @@ public class MultiHTMLReport {
             this.dest = dest;
         }
 
-        @Override
-        public void start() throws Exception {
-        }
-
         private void init(String title, String header, BufferedWriter out/*, boolean folder*/) throws IOException {
             out.write("<html><head>"); out.newLine();
             out.write("<title>" + title + "</title>"); out.newLine();
@@ -133,13 +125,13 @@ public class MultiHTMLReport {
             return folderOrFile.replace('/', '_') + ".html";
         }
         @Override
-        public void startFolder(String s, Coverage cov) throws IOException {
+        public void startFolder(String s) throws IOException {
             String folderFile;
             if (!s.isEmpty()) folderFile = reportFile(s);
             else folderFile = "index.html";
             try(BufferedWriter out = Files.newBufferedWriter(dest.resolve(folderFile))) {
                 init(title, folderHeader.apply(s), out);
-                var colors = cache.count(s);
+                var colors = theReport.itemsCache().count(s);
                 out.write("<table><tr><th>" + theReport.items().kind() + "</th><th>Count</th></tr>");
                 out.newLine();
                 for (var c : FileItems.Quality.values()) {
@@ -151,7 +143,7 @@ public class MultiHTMLReport {
                     }
                 }
                 out.write("</table>"); out.newLine();
-                out.write("Line coverage: " + cov.toString());
+                out.write("Line coverage: " + theReport.coverage().get(s).toString());
                 out.newLine();
                 Collection<String> folders = theReport.files().folders(s);
                 if (!folders.isEmpty()) {
@@ -166,7 +158,7 @@ public class MultiHTMLReport {
                     out.newLine();
                     for (String subFolder : folders) {
                         out.write("<tr><td><a href=\"" + reportFile(subFolder) + "\"</a>" + subFolder + "</a></td>");
-                        colors = cache.count(subFolder);
+                        colors = theReport.itemsCache().count(subFolder);
                         for (var c : FileItems.Quality.values()) {
                             if (theReport.items().legend().containsKey(c)) {
                                 out.write("<td><a class=\"" + HTML_COLOR_CLASSES.get(c) + "\">" +
@@ -191,7 +183,7 @@ public class MultiHTMLReport {
                     out.newLine();
                     for (String file : files) {
                         out.write("<tr><td><a href=\"" + reportFile(file) + "\"</a>" + file + "</a></td>");
-                        colors = cache.count(file);
+                        colors = theReport.itemsCache().count(file);
                         for (var c : FileItems.Quality.values()) {
                             if (theReport.items().legend().containsKey(c)) {
                                 out.write("<td><a class=\"" + HTML_COLOR_CLASSES.get(c) + "\">" +
@@ -286,13 +278,13 @@ public class MultiHTMLReport {
             fileOut.close();
         }
 
-        public void endFolder(String s, Coverage cov) {
+        public void endFolder(String s) {
         }
 
-        @Override
-        public void end() throws Exception {
-
-        }
+//        @Override
+//        public void end() throws Exception {
+//
+//        }
 
         @Override
         public void close() throws Exception {

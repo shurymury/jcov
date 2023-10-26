@@ -198,7 +198,7 @@ public class LostKeptTest {
                 .setFiles(new FileSet(classes.get(1).keySet()))
                 .report().report(reportDir);
         var content = Files.readAllLines(reportDir.resolve("index.html"));
-        assertTrue(content.contains("Line coverage: 14/23"));
+        assertTrue(content.contains("Line coverage: 61.00%(14/23)"));
         assertTrue(content.stream().anyMatch(l ->
                 Pattern.matches(".*class=\"item_not_so_good\".*Lost.*2.*", l)));
         content = Files.readAllLines(reportDir.resolve("p_a_A.java.html"));

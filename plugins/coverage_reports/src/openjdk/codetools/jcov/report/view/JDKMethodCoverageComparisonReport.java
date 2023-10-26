@@ -82,5 +82,6 @@ public class JDKMethodCoverageComparisonReport {
                 .report().report(reportDir);
         MultiHTMLReport.toReport("MethodCoverageComparisonReport.html", reportDir);
         System.out.println("done " + (System.currentTimeMillis() - start));
+//        new ProcessBuilder("open", reportDir.resolve("index.html").toString()).start().waitFor();
     }
 }

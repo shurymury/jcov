@@ -73,7 +73,7 @@ public class TextReportTest {
         report.report(reportFile);
         var content = Files.readAllLines(reportFile);
         assertTrue(content.contains("HEADER"));
-        assertTrue(content.stream().anyMatch("total 1/2"::equals));
+        assertTrue(content.stream().anyMatch("total 50.00%(1/2)"::equals));
         assertTrue(content.stream().anyMatch("4:-source line #4"::equals));
         assertTrue(content.stream().anyMatch("6:+source line #6"::equals));
     }
