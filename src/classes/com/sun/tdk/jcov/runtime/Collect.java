@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -263,7 +263,7 @@ public class Collect {
         String m = PropertyFinder.findValue("extension", null);
         if (m != null) {
             if (m.equals("javatest") || m.equals("jt") || m.equals("jtreg")) {
-                m = "com.sun.tdk.jcov.NetworkSatelliteDecorator";
+                m = "com.sun.tdk.jcov.runtime.NetworkSatelliteDecorator";
             }
             try {
                 extension = (Class<SaverDecorator>) Class.forName(m);
@@ -317,7 +317,7 @@ public class Collect {
             isInternal = true;
             if (isVMReady || isVMReady()) {
                 loadSaverExtension();
-                addSaver(instantiateSaver());
+                addSaver(decorateSaver(instantiateSaver()));
                 PropertyFinder.addAutoShutdownSave();
                 isInitialized = true;
             }
