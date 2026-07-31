@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class NetworkSatelliteDecorator implements SaverDecorator {
 
+    private static final String UNKNOWN_TEST_NAME = "UNKNOWN_TEST";
     private JCovSaver wrapped;
     private int port = 3337;
     private static String host = "localhost";
@@ -109,25 +110,16 @@ public class NetworkSatelliteDecorator implements SaverDecorator {
     }
 
     public void saveResults() {
-
-        while (name == null){
-            try {
-                Thread.currentThread().sleep(100);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        if (name == null) {
+            name = UNKNOWN_TEST_NAME;
         }
-
-        if (name != null) {
-            System.setProperty("jcov.testname", name);
-            lock.lock();
-            try {
-                wrapped.saveResults();
-            } finally {
-                lock.unlock();
-            }
-            name = null;
+        System.setProperty("jcov.testname", name);
+        lock.lock();
+        try {
+            wrapped.saveResults();
+        } finally {
+            lock.unlock();
         }
-
+        name = null;
     }
 }
