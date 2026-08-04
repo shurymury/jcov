@@ -62,7 +62,6 @@ public class CompositeObserverTest {
         assertEquals(process.waitFor(), 0);
 
         List<String> callbacks1 = Files.readAllLines(output.resolve("1.log"));
-        callbacks1.forEach(System.out::println);
         List<String> callbacks2 = Files.readAllLines(output.resolve("2.log"));
         assertEquals(callbacks1, callbacks2);
     }
