@@ -351,11 +351,12 @@ MILESTONE="${build.milestone}"
 
     <property name="tests" value="test/unit"/>
 
-    <target name="test-jtreg" depends="build-jcov,build-network.saver,build-file.saver">
+    <target name="test-jtreg" depends="build-jcov,build-network.saver,build-file.saver,build-jt.observer">
         <exec executable="${jtreg.home}/bin/jtreg" dir="..">
             <arg value="-workDir:${result.dir}/JTwork"/>
             <arg value="-reportDir:${result.dir}/JTreport"/>
-            <arg value="-cpa:${build.dir}/jcov.jar:${build.dir}/jcov_file_saver.jar"/>
+            <arg value="-cpa:${build.dir}/jcov.jar:${build.dir}/jcov_file_saver.jar:${build.dir}/jtobserver.jar:${javatestjar}"/>
+            <arg value="-e:JT_HOME"/>
             <arg value="-v1"/>
             <arg value="${tests}"/>
         </exec>

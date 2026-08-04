@@ -1,0 +1,53 @@
+package jcov;
+
+import org.testng.annotations.Test;
+
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+
+import static org.testng.Assert.assertEquals;
+
+/**
+ * Runs a nested jtreg invocation with a {@link CompositeObserver} configured
+ * with two {@link TestObserver} instances. The test verifies that both
+ * observers record the same callback sequence.
+ */
+public class CompositeObserverTest {
+    @Test
+    void twoObserverTests() throws Exception {
+        Path output = Files.createTempDirectory("TestObserver");
+        Path jtreg = Path.of(System.getenv("JT_HOME"), "bin", "jtreg");
+        Path observer = classPath(CompositeObserver.class);
+        Path testObserver = classPath(TestObserver.class);
+        Path workDir = Path.of(System.getProperty("test.classes")).getParent()
+                .resolve(System.getProperty("test.name").replace(".java", ".d"));
+
+        ProcessBuilder builder = new ProcessBuilder(jtreg.toString(), "-conc:1",
+                "-cpa:" + System.getProperty("java.class.path"),
+                "-workDir:" + workDir,
+                "-reportDir:" + workDir.resolve("JTreport"),
+                "-observer:jcov.CompositeObserver",
+                "-observerDir:" + observer + java.io.File.pathSeparator + testObserver,
+                "-J-Djtreg.observers.to.chain=jcov.TestObserver,jcov.TestObserver",
+                "-J-Djcov.testObserver.files=" + output,
+                emptyTest().toString());
+        builder.environment().put("JAVA_HOME", System.getProperty("java.home"));
+        Process process = builder.inheritIO().start();
+        assertEquals(process.waitFor(), 0);
+
+        List<String> callbacks1 = Files.readAllLines(output.resolve("1.log"));
+        callbacks1.forEach(System.out::println);
+        List<String> callbacks2 = Files.readAllLines(output.resolve("2.log"));
+        assertEquals(callbacks1, callbacks2);
+    }
+
+    private Path classPath(Class<?> clazz) throws URISyntaxException {
+        return Path.of(clazz.getProtectionDomain().getCodeSource().getLocation().toURI());
+    }
+
+    private Path emptyTest() {
+        return Path.of(System.getProperty("test.src"), "jcov", "EmptyJTRegTest.java");
+    }
+}
