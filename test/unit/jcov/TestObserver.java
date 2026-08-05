@@ -66,7 +66,7 @@ public class TestObserver implements Harness.Observer {
     }
 
     public void startingTestRun(Parameters params) {
-        record("startingTestRun(" + params + ")");
+        record("startingTestRun(" + params.getTestSuite().getName() + ")");
     }
 
     public void startingTest(TestResult tr) {
@@ -82,7 +82,7 @@ public class TestObserver implements Harness.Observer {
     }
 
     public void finishedTesting(TestResultTable.TreeIterator treeIterator) {
-        record("finishedTesting(" + treeIterator + ")");
+        record("finishedTesting(" + treeIterator.getResultStats().length + ")");
     }
 
     public void finishedTestRun(boolean allOK) {
@@ -94,7 +94,7 @@ public class TestObserver implements Harness.Observer {
     }
 
     public void notifyOfTheFinalStats(Map<TestFilter, List<TestDescription>> filters, int... stats) {
-        record("notifyOfTheFinalStats(" + filters + ", " + Arrays.toString(stats) + ")");
+        record("notifyOfTheFinalStats(" + filters.size() + ")");
     }
 
     public void finishedTesting() {

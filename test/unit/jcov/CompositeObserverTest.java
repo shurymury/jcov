@@ -63,6 +63,14 @@ public class CompositeObserverTest {
 
         List<String> callbacks1 = Files.readAllLines(output.resolve("1.log"));
         List<String> callbacks2 = Files.readAllLines(output.resolve("2.log"));
+        List<String> expected = List.of(
+                "startingTestRun(" + System.getProperty("test.src") + ")",
+                "startingTest(jcov/EmptyJTRegTest.java)",
+                "finishedTest(jcov/EmptyJTRegTest.java)",
+                "finishedTesting()",
+                "finishedTesting(4)",
+                "finishedTestRun(true)");
+        assertEquals(callbacks1, expected);
         assertEquals(callbacks1, callbacks2);
     }
 
